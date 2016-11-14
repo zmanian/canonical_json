@@ -62,6 +62,9 @@ pub enum ErrorCode {
     /// Expected this character to start a JSON value.
     ExpectedSomeValue,
 
+    /// Unexpected whitespace.
+    UnexpectedWhitespace,
+
     /// Invalid hex escape code.
     InvalidEscape,
 
@@ -122,6 +125,7 @@ impl fmt::Display for ErrorCode {
             ErrorCode::ExpectedObjectCommaOrEnd => "expected `,` or `}`".fmt(f),
             ErrorCode::ExpectedSomeIdent => "expected ident".fmt(f),
             ErrorCode::ExpectedSomeValue => "expected value".fmt(f),
+            ErrorCode::UnexpectedWhitespace => "unexpected whitespace".fmt(f),
             ErrorCode::InvalidEscape => "invalid escape".fmt(f),
             ErrorCode::InvalidNumber => "invalid number".fmt(f),
             ErrorCode::NumberOutOfRange => "number out of range".fmt(f),

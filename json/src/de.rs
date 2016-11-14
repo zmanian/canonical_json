@@ -111,7 +111,7 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     fn end(&mut self) -> Result<()> {
-        try!(self.parse_whitespace());
+        try!(self.reject_whitespace());
         if try!(self.eof()) {
             Ok(())
         } else {
@@ -155,15 +155,13 @@ impl<R: Read> DeserializerImpl<R> {
         Error::Syntax(reason, pos.line, pos.column)
     }
 
-    fn parse_whitespace(&mut self) -> Result<()> {
-        loop {
-            match try!(self.peek_or_null()) {
-                b' ' | b'\n' | b'\t' | b'\r' => {
-                    self.eat_char();
-                }
-                _ => {
-                    return Ok(());
-                }
+    fn reject_whitespace(&mut self) -> Result<()> {
+        match try!(self.peek_or_null()) {
+            b' ' | b'\n' | b'\t' | b'\r' => {
+                Err(self.peek_error(ErrorCode::UnexpectedWhitespace))
+            }
+            _ => {
+                Ok(())
             }
         }
     }
@@ -171,7 +169,7 @@ impl<R: Read> DeserializerImpl<R> {
     fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        try!(self.parse_whitespace());
+        try!(self.reject_whitespace());
 
         if try!(self.eof()) {
             return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
@@ -304,7 +302,7 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
-        try!(self.parse_whitespace());
+        try!(self.reject_whitespace());
 
         match try!(self.peek()) {
             Some(b':') => {
@@ -332,7 +330,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        try!(self.parse_whitespace());
+        try!(self.reject_whitespace());
 
         match try!(self.peek_or_null()) {
             b'n' => {
@@ -367,18 +365,18 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     ) -> Result<V::Value>
         where V: de::EnumVisitor,
     {
-        try!(self.parse_whitespace());
+        try!(self.reject_whitespace());
 
         match try!(self.peek_or_null()) {
             b'{' => {
                 self.eat_char();
-                try!(self.parse_whitespace());
+                try!(self.reject_whitespace());
 
                 let value = {
                     try!(visitor.visit(VariantVisitor::new(self)))
                 };
 
-                try!(self.parse_whitespace());
+                try!(self.reject_whitespace());
 
                 match try!(self.next_char_or_null()) {
                     b'}' => Ok(value),
@@ -417,7 +415,7 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
     fn visit<T>(&mut self) -> Result<Option<T>>
         where T: de::Deserialize,
     {
-        try!(self.de.parse_whitespace());
+        try!(self.de.reject_whitespace());
 
         match try!(self.de.peek()) {
             Some(b']') => {
@@ -444,7 +442,7 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
     }
 
     fn end(&mut self) -> Result<()> {
-        try!(self.de.parse_whitespace());
+        try!(self.de.reject_whitespace());
 
         match try!(self.de.next_char()) {
             Some(b']') => Ok(()),
@@ -474,7 +472,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
     fn visit_key<K>(&mut self) -> Result<Option<K>>
         where K: de::Deserialize,
     {
-        try!(self.de.parse_whitespace());
+        try!(self.de.reject_whitespace());
 
         match try!(self.de.peek()) {
             Some(b'}') => {
@@ -482,7 +480,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
             }
             Some(b',') if !self.first => {
                 self.de.eat_char();
-                try!(self.de.parse_whitespace());
+                try!(self.de.reject_whitespace());
             }
             Some(_) => {
                 if self.first {
@@ -514,7 +512,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
     }
 
     fn end(&mut self) -> Result<()> {
-        try!(self.de.parse_whitespace());
+        try!(self.de.reject_whitespace());
 
         match try!(self.de.next_char()) {
             Some(b'}') => Ok(()),
@@ -695,10 +693,7 @@ impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
     type Item = Result<T>;
 
     fn next(&mut self) -> Option<Result<T>> {
-        // skip whitespaces, if any
-        // this helps with trailing whitespaces, since whitespaces between
-        // values are handled for us.
-        if let Err(e) = self.deser.parse_whitespace() {
+        if let Err(e) = self.deser.reject_whitespace() {
             return Some(Err(e));
         };
 

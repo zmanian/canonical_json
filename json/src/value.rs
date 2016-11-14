@@ -10,7 +10,7 @@
 //! use canonical_json::Value;
 //!
 //! fn main() {
-//!     let s = "{\"x\": 1, \"y\": 2}";
+//!     let s = "{\"x\":1,\"y\":2}";
 //!     let value: Value = canonical_json::from_str(s).unwrap();
 //! }
 //! ```

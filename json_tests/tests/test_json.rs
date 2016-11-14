@@ -418,13 +418,13 @@ fn test_parse_bool() {
         ("faz", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 3)),
         ("truea", Error::Syntax(ErrorCode::TrailingCharacters, 1, 5)),
         ("falsea", Error::Syntax(ErrorCode::TrailingCharacters, 1, 6)),
+        (" true ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 1)),
+        (" false ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 1)),
     ]);
 
     test_parse_ok(vec![
         ("true", true),
-        (" true ", true),
         ("false", false),
-        (" false ", false),
     ]);
 }
 
@@ -457,10 +457,13 @@ fn test_parse_number_errors() {
 
 #[test]
 fn test_parse_i64() {
+    test_parse_err::<bool>(vec![
+        (" -1234 ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 1)),
+    ]);
+
     test_parse_ok(vec![
         ("-2", -2),
         ("-1234", -1234),
-        (" -1234 ", -1234),
         (&i64::MIN.to_string(), i64::MIN),
         (&i64::MAX.to_string(), i64::MAX),
     ]);
@@ -481,6 +484,7 @@ fn test_parse_string() {
     test_parse_err::<String>(vec![
         ("\"", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 1)),
         ("\"lol", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 4)),
+        (" \"foo\" ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 1)),
         ("\"lol\"a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 6)),
         ("\"\\uD83C\\uFFFF\"", Error::Syntax(ErrorCode::LoneLeadingSurrogateInHexEscape, 1, 13)),
     ]);
@@ -495,7 +499,6 @@ fn test_parse_string() {
     test_parse_ok(vec![
         ("\"\"", "".to_string()),
         ("\"foo\"", "foo".to_string()),
-        (" \"foo\" ", "foo".to_string()),
         ("\"\\\"\"", "\"".to_string()),
         ("\"\\b\"", "\x08".to_string()),
         ("\"\\n\"", "\n".to_string()),
@@ -511,19 +514,21 @@ fn test_parse_string() {
 fn test_parse_list() {
     test_parse_err::<Vec<i64>>(vec![
         ("[", Error::Syntax(ErrorCode::EOFWhileParsingList, 1, 1)),
-        ("[ ", Error::Syntax(ErrorCode::EOFWhileParsingList, 1, 2)),
+        ("[ ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
         ("[1", Error::Syntax(ErrorCode::EOFWhileParsingList,  1, 2)),
         ("[1,", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 3)),
         ("[1,]", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 4)),
-        ("[1 2]", Error::Syntax(ErrorCode::ExpectedListCommaOrEnd, 1, 4)),
         ("[]a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 3)),
+        ("[ ]", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
+        ("[ 1 ]", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
+        ("[1 2]", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 3)),
+        ("[1, 2]", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 4)),
+        ("[1,2 ]", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 5)),
     ]);
 
     test_parse_ok(vec![
         ("[]", vec![]),
-        ("[ ]", vec![]),
         ("[null]", vec![()]),
-        (" [ null ] ", vec![()]),
     ]);
 
     test_parse_ok(vec![
@@ -532,11 +537,10 @@ fn test_parse_list() {
 
     test_parse_ok(vec![
         ("[3,1]", vec![3u64, 1]),
-        (" [ 3 , 1 ] ", vec![3, 1]),
     ]);
 
     test_parse_ok(vec![
-        ("[[3], [1, 2]]", vec![vec![3u64], vec![1, 2]]),
+        ("[[3],[1,2]]", vec![vec![3u64], vec![1, 2]]),
     ]);
 
     test_parse_ok(vec![
@@ -544,15 +548,15 @@ fn test_parse_list() {
     ]);
 
     test_parse_ok(vec![
-        ("[1, 2]", (1u64, 2u64)),
+        ("[1,2]", (1u64, 2u64)),
     ]);
 
     test_parse_ok(vec![
-        ("[1, 2, 3]", (1u64, 2u64, 3u64)),
+        ("[1,2,3]", (1u64, 2u64, 3u64)),
     ]);
 
     test_parse_ok(vec![
-        ("[1, [2, 3]]", (1u64, (2u64, 3u64))),
+        ("[1,[2,3]]", (1u64, (2u64, 3u64))),
     ]);
 
     let v: () = from_str("[]").unwrap();
@@ -563,44 +567,37 @@ fn test_parse_list() {
 fn test_parse_object() {
     test_parse_err::<BTreeMap<String, u32>>(vec![
         ("{", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 1)),
-        ("{ ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 2)),
+        ("{ ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
         ("{1", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 2)),
-        ("{ \"a\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 5)),
+        ("{ \"a\"", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
         ("{\"a\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 4)),
-        ("{\"a\" ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 5)),
-        ("{\"a\" 1", Error::Syntax(ErrorCode::ExpectedColon, 1, 6)),
+        ("{\"a\" ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 5)),
+        ("{\"a\"1", Error::Syntax(ErrorCode::ExpectedColon, 1, 5)),
         ("{\"a\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 5)),
         ("{\"a\":1", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 6)),
-        ("{\"a\":1 1", Error::Syntax(ErrorCode::ExpectedObjectCommaOrEnd, 1, 8)),
+        ("{\"a\":1 ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 7)),
+        ("{\"a\":\"1\"1", Error::Syntax(ErrorCode::ExpectedObjectCommaOrEnd, 1, 9)),
         ("{\"a\":1,", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
         ("{\"a\":1,}", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 8)),
         ("{}a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 3)),
+        ("{ }", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
     ]);
 
     test_parse_ok(vec![
         ("{}", treemap!()),
-        ("{ }", treemap!()),
         (
             "{\"a\":3}",
             treemap!("a".to_string() => 3u64)
         ),
         (
-            "{ \"a\" : 3 }",
-            treemap!("a".to_string() => 3)
-        ),
-        (
             "{\"a\":3,\"b\":4}",
             treemap!("a".to_string() => 3, "b".to_string() => 4)
-        ),
-        (
-            " { \"a\" : 3 , \"b\" : 4 } ",
-            treemap!("a".to_string() => 3, "b".to_string() => 4),
         ),
     ]);
 
     test_parse_ok(vec![
         (
-            "{\"a\": {\"b\": 3, \"c\": 4}}",
+            "{\"a\":{\"b\":3,\"c\":4}}",
             treemap!(
                 "a".to_string() => treemap!(
                     "b".to_string() => 3u64,
@@ -616,26 +613,20 @@ fn test_parse_struct() {
     test_parse_err::<Outer>(vec![
         ("5", Error::Syntax(ErrorCode::InvalidType(de::Type::U64), 1, 1)),
         ("\"hello\"", Error::Syntax(ErrorCode::InvalidType(de::Type::Str), 1, 7)),
-        ("{\"inner\": true}", Error::Syntax(ErrorCode::InvalidType(de::Type::Bool), 1, 14)),
+        ("{\"inner\":true}", Error::Syntax(ErrorCode::InvalidType(de::Type::Bool), 1, 13)),
         ("{}", Error::Syntax(ErrorCode::MissingField("inner"), 1, 2)),
-        (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::Syntax(ErrorCode::MissingField("a"), 1, 29)),
+        (r#"{"inner":[{"b":42,"c":[]}]}"#, Error::Syntax(ErrorCode::MissingField("a"), 1, 25)),
     ]);
 
     test_parse_ok(vec![
         (
-            "{
-                \"inner\": []
-            }",
+            "{\"inner\":[]}",
             Outer {
                 inner: vec![]
             },
         ),
         (
-            "{
-                \"inner\": [
-                    { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
-                ]
-            }",
+            "{\"inner\":[{\"a\":null,\"b\":2,\"c\":[\"abc\",\"xyz\"]}]}",
             Outer {
                 inner: vec![
                     Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
@@ -644,13 +635,7 @@ fn test_parse_struct() {
         ),
     ]);
 
-    let v: Outer = from_str(
-        "[
-            [
-                [ null, 2, [\"abc\", \"xyz\"] ]
-            ]
-        ]").unwrap();
-
+    let v: Outer = from_str("[[[null,2,[\"abc\",\"xyz\"]]]]").unwrap();
     assert_eq!(
         v,
         Outer {
@@ -677,8 +662,8 @@ fn test_parse_option() {
     assert_eq!(value, Foo { x: None });
 
     test_parse_ok(vec![
-        ("{\"x\": null}", Foo { x: None }),
-        ("{\"x\": 5}", Foo { x: Some(5) }),
+        ("{\"x\":null}", Foo { x: None }),
+        ("{\"x\":5}", Foo { x: Some(5) }),
     ]);
 }
 
@@ -697,10 +682,10 @@ fn test_parse_enum_errors() {
         ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
         ("{\"Cat\":[]}", Error::Syntax(ErrorCode::InvalidLength(0), 1, 9)),
         ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::InvalidLength(1), 1, 10)),
-        ("{\"Cat\":[0, \"\", 2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 14)),
+        ("{\"Cat\":[0,\"\",2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 13)),
         (
-            "{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
-            Error::Syntax(ErrorCode::UnknownField("foo".to_string()), 1, 39)
+            "{\"Cat\":{\"age\":5,\"name\":\"Kate\",\"foo\":\"bar\"}",
+            Error::Syntax(ErrorCode::UnknownField("foo".to_string()), 1, 35)
         ),
     ]);
 }
@@ -709,42 +694,31 @@ fn test_parse_enum_errors() {
 fn test_parse_enum() {
     test_parse_ok(vec![
         ("\"Dog\"", Animal::Dog),
-        (" \"Dog\" ", Animal::Dog),
         (
             "{\"Frog\":[\"Henry\",[]]}",
             Animal::Frog("Henry".to_string(), vec![]),
         ),
         (
-            " { \"Frog\": [ \"Henry\" , [ 349, 102 ] ] } ",
+            "{\"Frog\":[\"Henry\",[349,102]]}",
             Animal::Frog("Henry".to_string(), vec![349, 102]),
         ),
         (
-            "{\"Cat\": {\"age\": 5, \"name\": \"Kate\"}}",
+            "{\"Cat\":{\"age\":5,\"name\":\"Kate\"}}",
             Animal::Cat { age: 5, name: "Kate".to_string() },
         ),
         (
-            " { \"Cat\" : { \"age\" : 5 , \"name\" : \"Kate\" } } ",
-            Animal::Cat { age: 5, name: "Kate".to_string() },
-        ),
-        (
-            " { \"AntHive\" : [\"Bob\", \"Stuart\"] } ",
+            "{\"AntHive\":[\"Bob\",\"Stuart\"]}",
             Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
         ),
     ]);
 
     test_parse_unusual_ok(vec![
         ("{\"Dog\":[]}", Animal::Dog),
-        (" { \"Dog\" : [ ] } ", Animal::Dog),
     ]);
 
     test_parse_ok(vec![
         (
-            concat!(
-                "{",
-                "  \"a\": \"Dog\",",
-                "  \"b\": {\"Frog\":[\"Henry\", []]}",
-                "}"
-            ),
+            "{\"a\":\"Dog\",\"b\":{\"Frog\":[\"Henry\",[]]}}",
             treemap!(
                 "a".to_string() => Animal::Dog,
                 "b".to_string() => Animal::Frog("Henry".to_string(), vec![])
@@ -755,18 +729,11 @@ fn test_parse_enum() {
 
 #[test]
 fn test_parse_trailing_whitespace() {
-    test_parse_ok(vec![
-        ("[1, 2] ", vec![1u64, 2]),
-        ("[1, 2]\n", vec![1, 2]),
-        ("[1, 2]\t", vec![1, 2]),
-        ("[1, 2]\t \n", vec![1, 2]),
-    ]);
-}
-
-#[test]
-fn test_multiline_errors() {
-    test_parse_err::<BTreeMap<String, String>>(vec![
-        ("{\n  \"foo\":\n \"bar\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 3, 6)),
+    test_parse_err::<[i64; 2]>(vec![
+        ("[1,2] ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 6)),
+        ("[1,2]\n", Error::Syntax(ErrorCode::UnexpectedWhitespace, 2, 0)),
+        ("[1,2]\t", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 6)),
+        ("[1,2]\t \n", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 6)),
     ]);
 }
 
@@ -780,7 +747,7 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{}").unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_str("{\"x\": 5}").unwrap();
+    let value: Foo = from_str("{\"x\":5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
     let value: Foo = from_value(Value::Object(treemap!())).unwrap();
@@ -815,7 +782,7 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{}").unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_str("{\"y\": 5}").unwrap();
+    let value: Foo = from_str("{\"y\":5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
     let value: Foo = from_value(Value::Object(treemap!())).unwrap();
@@ -829,7 +796,7 @@ fn test_missing_renamed_field() {
 
 #[test]
 fn test_find_path() {
-    let obj: Value = canonical_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
+    let obj: Value = canonical_json::from_str(r#"{"x":{"a":1},"y":2}"#).unwrap();
 
     assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::U64(1));
     assert!(obj.find_path(&["y"]).unwrap() == &Value::U64(2));
@@ -838,7 +805,7 @@ fn test_find_path() {
 
 #[test]
 fn test_lookup() {
-    let obj: Value = canonical_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
+    let obj: Value = canonical_json::from_str(r#"{"x":{"a":1},"y":2}"#).unwrap();
 
     assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
     assert!(obj.lookup("y").unwrap() == &Value::U64(2));
@@ -1076,13 +1043,13 @@ fn test_byte_buf_de() {
     assert_eq!(v, bytes);
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    let v: ByteBuf = canonical_json::from_str("[1, 2, 3]").unwrap();
+    let v: ByteBuf = canonical_json::from_str("[1,2,3]").unwrap();
     assert_eq!(v, bytes);
 }
 
 #[test]
-fn test_json_stream_newlines() {
-    let stream = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
+fn test_json_stream() {
+    let stream = "{\"x\":39}{\"x\":40}{\"x\":41}{\"x\":42}".to_string();
     let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
@@ -1099,20 +1066,8 @@ fn test_json_stream_newlines() {
 }
 
 #[test]
-fn test_json_stream_trailing_whitespaces() {
-    let stream = "{\"x\":42} \t\n".to_string();
-    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
-        stream.as_bytes().iter().map(|byte| Ok(*byte))
-    );
-
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(42));
-    assert!(parsed.next().is_none());
-}
-
-#[test]
 fn test_json_stream_truncated() {
-    let stream = "{\"x\":40}\n{\"x\":".to_string();
+    let stream = "{\"x\":40}{\"x\":".to_string();
     let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
@@ -1136,18 +1091,7 @@ fn test_json_stream_empty() {
 #[test]
 fn test_json_pointer() {
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
-    let data: Value = canonical_json::from_str(r#"{
-        "foo": ["bar", "baz"],
-        "": 0,
-        "a/b": 1,
-        "c%d": 2,
-        "e^f": 3,
-        "g|h": 4,
-        "i\\j": 5,
-        "k\"l": 6,
-        " ": 7,
-        "m~n": 8
-    }"#).unwrap();
+    let data: Value = canonical_json::from_str(r#"{"foo":["bar","baz"],"":0,"a/b":1,"c%d":2,"e^f":3,"g|h":4,"i\\j":5,"k\"l":6," ":7,"m~n":8}"#).unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
     assert_eq!(data.pointer("/foo").unwrap(),
         &Value::Array(vec![Value::String("bar".to_owned()),

@@ -84,7 +84,7 @@
 //! use canonical_json::Value;
 //!
 //! fn main() {
-//!     let data: Value = canonical_json::from_str("{\"foo\": 13, \"bar\": \"baz\"}").unwrap();
+//!     let data: Value = canonical_json::from_str("{\"foo\":13,\"bar\":\"baz\"}").unwrap();
 //!     println!("data: {:?}", data);
 //!     // data: {"bar":"baz","foo":13}
 //!     println!("object? {}", data.is_object());
