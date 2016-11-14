@@ -1,11 +1,5 @@
-Serde JSON Serialization Library
-================================
-
-[![Build status](https://api.travis-ci.org/serde-rs/json.png)](https://travis-ci.org/serde-rs/json)
-[![Coverage Status](https://coveralls.io/repos/serde-rs/json/badge.svg?branch=master&service=github)](https://coveralls.io/github/serde-rs/json?branch=master)
-[![Latest Version](https://img.shields.io/crates/v/serde_json.svg)](https://crates.io/crates/serde\_json)
-
-[Documentation](http://docs.serde.rs/serde_json/)
+Canonical JSON Serialization Library
+====================================
 
 This crate is a Rust library for parsing and generating the
 [JSON](http://json.org) (JavaScript Object Notation) file format. It is built
@@ -16,7 +10,7 @@ Installation
 ============
 
 This crate works with Cargo and can be found on
-[crates.io](https://crates.io/crates/serde_json) with a `Cargo.toml` like:
+[crates.io](https://crates.io/crates/canonical_json) with a `Cargo.toml` like:
 
 ```toml
 [dependencies]
@@ -24,8 +18,8 @@ serde = "0.8"
 canonical_json = "0.8"
 ```
 
-Using Serde JSON
-================
+Using Canonical JSON
+====================
 
 `canonical_json` is very simple to use out of the box:
 
