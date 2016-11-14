@@ -33,9 +33,11 @@
 //!     .build();
 //! ```
 
+use std::collections::BTreeMap;
+
 use serde::ser;
 
-use value::{self, Map, Value};
+use value::{self, Value};
 
 /// This structure provides a simple interface for constructing a JSON array.
 #[derive(Default)]
@@ -84,7 +86,7 @@ impl ArrayBuilder {
 /// This structure provides a simple interface for constructing a JSON object.
 #[derive(Default)]
 pub struct ObjectBuilder {
-    object: Map<String, Value>,
+    object: BTreeMap<String, Value>,
 }
 
 impl ObjectBuilder {

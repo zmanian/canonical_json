@@ -20,15 +20,16 @@
 //! ```rust
 //! extern crate canonical_json;
 //!
-//! use canonical_json::{Value, Map};
+//! use std::collections::BTreeMap;
+//! use canonical_json::Value;
 //!
 //! fn main() {
-//!     let mut map = Map::new();
+//!     let mut map = BTreeMap::new();
 //!     map.insert(String::from("x"), Value::U64(1));
 //!     map.insert(String::from("y"), Value::U64(2));
 //!     let value = Value::Object(map);
 //!
-//!     let map: Map<String, u64> = canonical_json::from_value(value).unwrap();
+//!     let map: BTreeMap<String, u64> = canonical_json::from_value(value).unwrap();
 //! }
 //! ```
 
@@ -45,9 +46,6 @@ use serde::de;
 use serde::ser;
 
 use error::{Error, ErrorCode};
-
-/// Represents a key/value type.
-pub type Map<K, V> = BTreeMap<K, V>;
 
 /// Represents the `IntoIter` type.
 pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
@@ -76,7 +74,7 @@ pub enum Value {
     Array(Vec<Value>),
 
     /// Represents a JSON object
-    Object(Map<String, Value>),
+    Object(BTreeMap<String, Value>),
 }
 
 impl Value {
@@ -204,7 +202,7 @@ impl Value {
 
     /// If the `Value` is an Object, returns the associated Map.
     /// Returns None otherwise.
-    pub fn as_object(&self) -> Option<&Map<String, Value>> {
+    pub fn as_object(&self) -> Option<&BTreeMap<String, Value>> {
         match *self {
             Value::Object(ref map) => Some(map),
             _ => None,
@@ -213,7 +211,7 @@ impl Value {
 
     /// If the `Value` is an Object, returns the associated mutable Map.
     /// Returns None otherwise.
-    pub fn as_object_mut(&mut self) -> Option<&mut Map<String, Value>> {
+    pub fn as_object_mut(&mut self) -> Option<&mut BTreeMap<String, Value>> {
         match *self {
             Value::Object(ref mut map) => Some(map),
             _ => None,
@@ -512,12 +510,12 @@ pub struct TupleVariantState {
 #[doc(hidden)]
 pub struct StructVariantState {
     name: String,
-    map: Map<String, Value>,
+    map: BTreeMap<String, Value>,
 }
 
 #[doc(hidden)]
 pub struct MapState {
-    map: Map<String, Value>,
+    map: BTreeMap<String, Value>,
     next_key: Option<String>,
 }
 
@@ -672,7 +670,7 @@ impl ser::Serializer for Serializer {
     ) -> Result<(), Error>
         where T: ser::Serialize,
     {
-        let mut values = Map::new();
+        let mut values = BTreeMap::new();
         values.insert(String::from(variant), to_value(&value));
         self.value = Value::Object(values);
         Ok(())
@@ -785,7 +783,7 @@ impl ser::Serializer for Serializer {
         &mut self,
         state: TupleVariantState
     ) -> Result<(), Error> {
-        let mut object = Map::new();
+        let mut object = BTreeMap::new();
 
         object.insert(state.name, Value::Array(state.vec));
 
@@ -798,7 +796,7 @@ impl ser::Serializer for Serializer {
         _len: Option<usize>
     ) -> Result<MapState, Error> {
         Ok(MapState {
-            map: Map::new(),
+            map: BTreeMap::new(),
             next_key: None,
         })
     }
@@ -873,7 +871,7 @@ impl ser::Serializer for Serializer {
     ) -> Result<StructVariantState, Error> {
         Ok(StructVariantState {
             name: String::from(variant),
-            map: Map::new(),
+            map: BTreeMap::new(),
         })
     }
 
@@ -891,7 +889,7 @@ impl ser::Serializer for Serializer {
         &mut self,
         state: StructVariantState
     ) -> Result<(), Error> {
-        let mut object = Map::new();
+        let mut object = BTreeMap::new();
 
         object.insert(state.name, Value::Object(state.map));
 
