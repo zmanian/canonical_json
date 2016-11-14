@@ -1,4 +1,3 @@
-use std::f64;
 use std::fmt::Debug;
 use std::i64;
 use std::marker::PhantomData;
@@ -431,42 +430,28 @@ fn test_parse_bool() {
 
 #[test]
 fn test_parse_number_errors() {
-    test_parse_err::<f64>(vec![
+    test_parse_err::<i64>(vec![
         ("+", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
         (".", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
         ("-", Error::Syntax(ErrorCode::InvalidNumber, 1, 1)),
         ("00", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
+        ("01", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
         ("0x80", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
         ("\\0", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        ("1.", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
-        ("1.a", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
-        ("1.e1", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
-        ("1e", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
-        ("1e+", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
+        ("-0", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
+        ("1.", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
+        ("1.a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
+        ("1.e1", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
+        ("1e", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
+        ("1e10", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
+        ("1e+", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
         ("1a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
-        ("100e777777777777777777777777777", Error::Syntax(ErrorCode::NumberOutOfRange, 1, 14)),
-        ("-100e777777777777777777777777777", Error::Syntax(ErrorCode::NumberOutOfRange, 1, 15)),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000", // 1e309
-           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 310)),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           .0e9", // 1e309
-           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 305)),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           e9", // 1e309
-           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 303)),
+        ("18446744073709551616", // 2^64
+           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 20)),
+        ("-9223372036854775809", // -2^63 - 1
+           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 20)),
+        ("100000000000000000000", // 1e21
+           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 21)),
     ]);
 }
 
@@ -489,21 +474,6 @@ fn test_parse_u64() {
         ("1234", 1234),
         (&u64::MAX.to_string(), u64::MAX),
     ]);
-}
-
-#[test]
-fn test_parse_negative_zero() {
-    for negative_zero in &[
-        "-0.0",
-        "-0e2",
-        "-0.0e2",
-        "-1e-400",
-        "-1e-4000000000000000000000000000000000000000000000000",
-    ] {
-        assert_eq!(0, from_str::<u32>(negative_zero).unwrap());
-        assert!(from_str::<f64>(negative_zero).unwrap().is_sign_negative(),
-            "should have been negative: {:?}", negative_zero);
-    }
 }
 
 #[test]
@@ -539,7 +509,7 @@ fn test_parse_string() {
 
 #[test]
 fn test_parse_list() {
-    test_parse_err::<Vec<f64>>(vec![
+    test_parse_err::<Vec<i64>>(vec![
         ("[", Error::Syntax(ErrorCode::EOFWhileParsingList, 1, 1)),
         ("[ ", Error::Syntax(ErrorCode::EOFWhileParsingList, 1, 2)),
         ("[1", Error::Syntax(ErrorCode::EOFWhileParsingList,  1, 2)),
