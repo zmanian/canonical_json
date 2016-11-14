@@ -16,8 +16,7 @@
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!    same array
-//! * `Object`: equivalent to rust's `BTreeMap<String, canonical_json::Value>`; set the
-//!    `preserve_order` feature to use `LinkedHashMap<String, canonical_json::Value>` instead
+//! * `Object`: equivalent to rust's `BTreeMap<String, canonical_json::Value>`
 //! * `Null`
 //!
 //! An object is a series of string keys mapping to values, in `"key": value` format.  Arrays are
@@ -143,8 +142,6 @@ extern crate core;
 extern crate serde;
 extern crate itoa;
 extern crate dtoa;
-#[cfg(feature = "preserve_order")]
-extern crate linked_hash_map;
 
 pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
                    from_slice, from_str};
