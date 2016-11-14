@@ -27,16 +27,6 @@ impl<W> Serializer<W>
     }
 }
 
-impl<'a, W> Serializer<W, PrettyFormatter<'a>>
-    where W: io::Write,
-{
-    /// Creates a new JSON pretty print serializer.
-    #[inline]
-    pub fn pretty(writer: W) -> Self {
-        Serializer::with_formatter(writer, PrettyFormatter::new())
-    }
-}
-
 impl<W, F> Serializer<W, F>
     where W: io::Write,
           F: Formatter,
@@ -775,71 +765,6 @@ impl Formatter for CompactFormatter {
     }
 }
 
-/// This structure pretty prints a JSON value to make it human readable.
-#[derive(Clone, Debug)]
-pub struct PrettyFormatter<'a> {
-    current_indent: usize,
-    indent: &'a [u8],
-}
-
-impl<'a> PrettyFormatter<'a> {
-    /// Construct a pretty printer formatter that defaults to using two spaces for indentation.
-    pub fn new() -> Self {
-        PrettyFormatter::with_indent(b"  ")
-    }
-
-    /// Construct a pretty printer formatter that uses the `indent` string for indentation.
-    pub fn with_indent(indent: &'a [u8]) -> Self {
-        PrettyFormatter {
-            current_indent: 0,
-            indent: indent,
-        }
-    }
-}
-
-impl<'a> Default for PrettyFormatter<'a> {
-    fn default() -> Self {
-        PrettyFormatter::new()
-    }
-}
-
-impl<'a> Formatter for PrettyFormatter<'a> {
-    fn open<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
-        where W: io::Write,
-    {
-        self.current_indent += 1;
-        writer.write_all(&[ch]).map_err(From::from)
-    }
-
-    fn comma<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
-        where W: io::Write,
-    {
-        if first {
-            try!(writer.write_all(b"\n"));
-        } else {
-            try!(writer.write_all(b",\n"));
-        }
-
-        indent(writer, self.current_indent, self.indent)
-    }
-
-    fn colon<W>(&mut self, writer: &mut W) -> Result<()>
-        where W: io::Write,
-    {
-        writer.write_all(b": ").map_err(From::from)
-    }
-
-    fn close<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
-        where W: io::Write,
-    {
-        self.current_indent -= 1;
-        try!(writer.write(b"\n"));
-        try!(indent(writer, self.current_indent, self.indent));
-
-        writer.write_all(&[ch]).map_err(From::from)
-    }
-}
-
 /// Serializes and escapes a `&str` into a JSON string.
 pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
     where W: io::Write,
@@ -959,17 +884,6 @@ pub fn to_writer<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<()>
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` writer.
-#[inline]
-pub fn to_writer_pretty<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<()>
-    where W: io::Write,
-          T: ser::Serialize,
-{
-    let mut ser = Serializer::pretty(writer);
-    try!(value.serialize(&mut ser));
-    Ok(())
-}
-
 /// Encode the specified struct into a json `[u8]` buffer.
 #[inline]
 pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
@@ -979,18 +893,6 @@ pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
     // the error.
     let mut writer = Vec::with_capacity(128);
     try!(to_writer(&mut writer, value));
-    Ok(writer)
-}
-
-/// Encode the specified struct into a json `[u8]` buffer.
-#[inline]
-pub fn to_vec_pretty<T>(value: &T) -> Result<Vec<u8>>
-    where T: ser::Serialize,
-{
-    // We are writing to a Vec, which doesn't fail. So we can ignore
-    // the error.
-    let mut writer = Vec::with_capacity(128);
-    try!(to_writer_pretty(&mut writer, value));
     Ok(writer)
 }
 
@@ -1005,27 +907,4 @@ pub fn to_string<T>(value: &T) -> Result<String>
         String::from_utf8_unchecked(vec)
     };
     Ok(string)
-}
-
-/// Encode the specified struct into a json `String` buffer.
-#[inline]
-pub fn to_string_pretty<T>(value: &T) -> Result<String>
-    where T: ser::Serialize,
-{
-    let vec = try!(to_vec_pretty(value));
-    let string = unsafe {
-        // We do not emit invalid UTF-8.
-        String::from_utf8_unchecked(vec)
-    };
-    Ok(string)
-}
-
-fn indent<W>(wr: &mut W, n: usize, s: &[u8]) -> Result<()>
-    where W: io::Write,
-{
-    for _ in 0..n {
-        try!(wr.write_all(s));
-    }
-
-    Ok(())
 }

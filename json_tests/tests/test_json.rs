@@ -71,28 +71,12 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
     }
 }
 
-fn test_pretty_encode_ok<T>(errors: &[(T, &str)])
-    where T: PartialEq + Debug + ser::Serialize,
-{
-    for &(ref value, out) in errors {
-        let out = out.to_string();
-
-        let s = canonical_json::to_string_pretty(value).unwrap();
-        assert_eq!(s, out);
-
-        let v = to_value(&value);
-        let s = canonical_json::to_string_pretty(&v).unwrap();
-        assert_eq!(s, out);
-    }
-}
-
 #[test]
 fn test_write_null() {
     let tests = &[
         ((), "null"),
     ];
     test_encode_ok(tests);
-    test_pretty_encode_ok(tests);
 }
 
 #[test]
@@ -102,7 +86,6 @@ fn test_write_u64() {
         (u64::MAX, &u64::MAX.to_string()),
     ];
     test_encode_ok(tests);
-    test_pretty_encode_ok(tests);
 }
 
 #[test]
@@ -114,7 +97,6 @@ fn test_write_i64() {
         (i64::MIN, &i64::MIN.to_string()),
     ];
     test_encode_ok(tests);
-    test_pretty_encode_ok(tests);
 }
 
 #[test]
@@ -129,7 +111,6 @@ fn test_write_f64() {
         (f64::EPSILON, "2.220446049250313e-16"),
     ];
     test_encode_ok(tests);
-    test_pretty_encode_ok(tests);
 }
 
 #[test]
@@ -154,7 +135,6 @@ fn test_write_str() {
         ("foo", "\"foo\""),
     ];
     test_encode_ok(tests);
-    test_pretty_encode_ok(tests);
 }
 
 #[test]
@@ -164,7 +144,6 @@ fn test_write_bool() {
         (false, "false"),
     ];
     test_encode_ok(tests);
-    test_pretty_encode_ok(tests);
 }
 
 #[test]
@@ -182,82 +161,6 @@ fn test_write_list() {
         (vec![vec![], vec![], vec![1, 2, 3]], "[[],[],[1,2,3]]"),
     ]);
 
-    test_pretty_encode_ok(&[
-        (
-            vec![vec![], vec![], vec![]],
-            indoc!("
-                [
-                  [],
-                  [],
-                  []
-                ]"
-            ),
-        ),
-        (
-            vec![vec![1, 2, 3], vec![], vec![]],
-            indoc!("
-                [
-                  [
-                    1,
-                    2,
-                    3
-                  ],
-                  [],
-                  []
-                ]"
-            ),
-        ),
-        (
-            vec![vec![], vec![1, 2, 3], vec![]],
-            indoc!("
-                [
-                  [],
-                  [
-                    1,
-                    2,
-                    3
-                  ],
-                  []
-                ]"
-            ),
-        ),
-        (
-            vec![vec![], vec![], vec![1, 2, 3]],
-            indoc!("
-                [
-                  [],
-                  [],
-                  [
-                    1,
-                    2,
-                    3
-                  ]
-                ]"
-            ),
-        ),
-    ]);
-
-    test_pretty_encode_ok(&[
-        (vec![], "[]"),
-        (
-            vec![true],
-            indoc!("
-                [
-                  true
-                ]"
-            ),
-        ),
-        (
-            vec![true, false],
-            indoc!("
-                [
-                  true,
-                  false
-                ]"
-            ),
-        ),
-    ]);
-
     let long_test_list = Value::Array(vec![
         Value::Bool(false),
         Value::Null,
@@ -268,22 +171,6 @@ fn test_write_list() {
             long_test_list.clone(),
             "[false,null,[\"foo\\nbar\",3.5]]",
         ),
-    ]);
-
-    test_pretty_encode_ok(&[
-        (
-            long_test_list,
-            indoc!(r#"
-                [
-                  false,
-                  null,
-                  [
-                    "foo\nbar",
-                    3.5
-                  ]
-                ]"#
-            ),
-        )
     ]);
 }
 
@@ -347,131 +234,6 @@ fn test_write_object() {
         ),
     ]);
 
-    test_pretty_encode_ok(&[
-        (
-            treemap![
-                "a".to_string() => treemap![],
-                "b".to_string() => treemap![],
-                "c".to_string() => treemap![]
-            ],
-            indoc!(r#"
-                {
-                  "a": {},
-                  "b": {},
-                  "c": {}
-                }"#
-            ),
-        ),
-        (
-            treemap![
-                "a".to_string() => treemap![
-                    "a".to_string() => treemap!["a" => vec![1,2,3]],
-                    "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
-                ],
-                "b".to_string() => treemap![],
-                "c".to_string() => treemap![]
-            ],
-            indoc!(r#"
-                {
-                  "a": {
-                    "a": {
-                      "a": [
-                        1,
-                        2,
-                        3
-                      ]
-                    },
-                    "b": {},
-                    "c": {}
-                  },
-                  "b": {},
-                  "c": {}
-                }"#
-            ),
-        ),
-        (
-            treemap![
-                "a".to_string() => treemap![],
-                "b".to_string() => treemap![
-                    "a".to_string() => treemap!["a" => vec![1,2,3]],
-                    "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
-                ],
-                "c".to_string() => treemap![]
-            ],
-            indoc!(r#"
-                {
-                  "a": {},
-                  "b": {
-                    "a": {
-                      "a": [
-                        1,
-                        2,
-                        3
-                      ]
-                    },
-                    "b": {},
-                    "c": {}
-                  },
-                  "c": {}
-                }"#
-            ),
-        ),
-        (
-            treemap![
-                "a".to_string() => treemap![],
-                "b".to_string() => treemap![],
-                "c".to_string() => treemap![
-                    "a".to_string() => treemap!["a" => vec![1,2,3]],
-                    "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
-                ]
-            ],
-            indoc!(r#"
-                {
-                  "a": {},
-                  "b": {},
-                  "c": {
-                    "a": {
-                      "a": [
-                        1,
-                        2,
-                        3
-                      ]
-                    },
-                    "b": {},
-                    "c": {}
-                  }
-                }"#
-            ),
-        ),
-    ]);
-
-    test_pretty_encode_ok(&[
-        (treemap!(), "{}"),
-        (
-            treemap!("a".to_string() => true),
-            indoc!(r#"
-                {
-                  "a": true
-                }"#
-            ),
-        ),
-        (
-            treemap!(
-                "a".to_string() => true,
-                "b".to_string() => false
-            ),
-            indoc!(r#"
-                {
-                  "a": true,
-                  "b": false
-                }"#
-            ),
-        ),
-    ]);
-
     let complex_obj = Value::Object(treemap!(
         "b".to_string() => Value::Array(vec![
             Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
@@ -490,24 +252,6 @@ fn test_write_object() {
             }"
         ),
     ]);
-
-    test_pretty_encode_ok(&[
-        (
-            complex_obj.clone(),
-            indoc!(r#"
-                {
-                  "b": [
-                    {
-                      "c": "\f\u001f\r"
-                    },
-                    {
-                      "d": ""
-                    }
-                  ]
-                }"#
-            ),
-        )
-    ]);
 }
 
 #[test]
@@ -519,36 +263,10 @@ fn test_write_tuple() {
         ),
     ]);
 
-    test_pretty_encode_ok(&[
-        (
-            (5,),
-            indoc!("
-                [
-                  5
-                ]"
-            ),
-        ),
-    ]);
-
     test_encode_ok(&[
         (
             (5, (6, "abc")),
             "[5,[6,\"abc\"]]",
-        ),
-    ]);
-
-    test_pretty_encode_ok(&[
-        (
-            (5, (6, "abc")),
-            indoc!(r#"
-                [
-                  5,
-                  [
-                    6,
-                    "abc"
-                  ]
-                ]"#
-            ),
         ),
     ]);
 }
@@ -581,51 +299,6 @@ fn test_write_enum() {
             "{\"AntHive\":[\"Bob\",\"Stuart\"]}",
         ),
     ]);
-
-    test_pretty_encode_ok(&[
-        (
-            Animal::Dog,
-            "\"Dog\"",
-        ),
-        (
-            Animal::Frog("Henry".to_string(), vec![]),
-            indoc!(r#"
-                {
-                  "Frog": [
-                    "Henry",
-                    []
-                  ]
-                }"#
-            ),
-        ),
-        (
-            Animal::Frog("Henry".to_string(), vec![349]),
-            indoc!(r#"
-                {
-                  "Frog": [
-                    "Henry",
-                    [
-                      349
-                    ]
-                  ]
-                }"#
-            ),
-        ),
-        (
-            Animal::Frog("Henry".to_string(), vec![349, 102]),
-            indoc!(r#"
-                {
-                  "Frog": [
-                    "Henry",
-                    [
-                      349,
-                      102
-                    ]
-                  ]
-                }"#
-            ),
-        ),
-    ]);
 }
 
 #[test]
@@ -638,24 +311,6 @@ fn test_write_option() {
     test_encode_ok(&[
         (None, "null"),
         (Some(vec!["foo", "bar"]), "[\"foo\",\"bar\"]"),
-    ]);
-
-    test_pretty_encode_ok(&[
-        (None, "null"),
-        (Some("jodhpurs"), "\"jodhpurs\""),
-    ]);
-
-    test_pretty_encode_ok(&[
-        (None, "null"),
-        (
-            Some(vec!["foo", "bar"]),
-            indoc!(r#"
-                [
-                  "foo",
-                  "bar"
-                ]"#
-            ),
-        ),
     ]);
 }
 
@@ -1361,16 +1016,6 @@ fn test_serialize_seq_with_no_len() {
             "[[],[]]",
         ),
     ]);
-
-    let s = canonical_json::to_string_pretty(&vec).unwrap();
-    let expected = indoc!("
-        [
-          [
-          ],
-          [
-          ]
-        ]");
-    assert_eq!(s, expected);
 }
 
 #[test]
@@ -1450,16 +1095,6 @@ fn test_serialize_map_with_no_len() {
             "{\"a\":{},\"b\":{}}",
         ),
     ]);
-
-    let s = canonical_json::to_string_pretty(&map).unwrap();
-    let expected = indoc!(r#"
-        {
-          "a": {
-          },
-          "b": {
-          }
-        }"#);
-    assert_eq!(s, expected);
 }
 
 #[test]
