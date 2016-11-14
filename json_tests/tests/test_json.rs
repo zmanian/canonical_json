@@ -573,6 +573,7 @@ fn test_parse_object() {
         ("{\"a\":1", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 6)),
         ("{\"a\":1 1", Error::Syntax(ErrorCode::ExpectedObjectCommaOrEnd, 1, 8)),
         ("{\"a\":1,", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
+        ("{\"a\":1,}", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 8)),
         ("{}a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 3)),
     ]);
 
