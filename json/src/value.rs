@@ -10,7 +10,7 @@
 //! use canonical_json::Value;
 //!
 //! fn main() {
-//!     let s = "{\"x\": 1.0, \"y\": 2.0}";
+//!     let s = "{\"x\": 1, \"y\": 2}";
 //!     let value: Value = canonical_json::from_str(s).unwrap();
 //! }
 //! ```
@@ -24,11 +24,11 @@
 //!
 //! fn main() {
 //!     let mut map = Map::new();
-//!     map.insert(String::from("x"), Value::F64(1.0));
-//!     map.insert(String::from("y"), Value::F64(2.0));
+//!     map.insert(String::from("x"), Value::U64(1));
+//!     map.insert(String::from("y"), Value::U64(2));
 //!     let value = Value::Object(map);
 //!
-//!     let map: Map<String, f64> = canonical_json::from_value(value).unwrap();
+//!     let map: Map<String, u64> = canonical_json::from_value(value).unwrap();
 //! }
 //! ```
 
@@ -68,9 +68,6 @@ pub enum Value {
 
     /// Represents a JSON unsigned integer
     U64(u64),
-
-    /// Represents a JSON floating point number
-    F64(f64),
 
     /// Represents a JSON string
     String(String),
@@ -263,7 +260,7 @@ impl Value {
     /// Returns true if the `Value` is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
         match *self {
-            Value::I64(_) | Value::U64(_) | Value::F64(_) => true,
+            Value::I64(_) | Value::U64(_) => true,
             _ => false,
         }
     }
@@ -284,14 +281,6 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a f64. Returns false otherwise.
-    pub fn is_f64(&self) -> bool {
-        match *self {
-            Value::F64(_) => true,
-            _ => false,
-        }
-    }
-
     /// If the `Value` is a number, return or cast it to a i64.
     /// Returns None otherwise.
     pub fn as_i64(&self) -> Option<i64> {
@@ -308,17 +297,6 @@ impl Value {
         match *self {
             Value::I64(n) => NumCast::from(n),
             Value::U64(n) => Some(n),
-            _ => None,
-        }
-    }
-
-    /// If the `Value` is a number, return or cast it to a f64.
-    /// Returns None otherwise.
-    pub fn as_f64(&self) -> Option<f64> {
-        match *self {
-            Value::I64(n) => NumCast::from(n),
-            Value::U64(n) => NumCast::from(n),
-            Value::F64(n) => Some(n),
             _ => None,
         }
     }
@@ -362,7 +340,6 @@ impl ser::Serialize for Value {
             Value::Bool(v) => serializer.serialize_bool(v),
             Value::I64(v) => serializer.serialize_i64(v),
             Value::U64(v) => serializer.serialize_u64(v),
-            Value::F64(v) => serializer.serialize_f64(v),
             Value::String(ref v) => serializer.serialize_str(v),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref v) => v.serialize(serializer),
@@ -397,11 +374,6 @@ impl de::Deserialize for Value {
             #[inline]
             fn visit_u64<E>(&mut self, value: u64) -> Result<Value, E> {
                 Ok(Value::U64(value))
-            }
-
-            #[inline]
-            fn visit_f64<E>(&mut self, value: f64) -> Result<Value, E> {
-                Ok(Value::F64(value))
             }
 
             #[inline]
@@ -628,12 +600,12 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
-        self.value = if value.is_finite() {
-            Value::F64(value)
+        if value.is_finite() {
+            self.serialize_i64(value as i64)
         } else {
-            Value::Null
-        };
-        Ok(())
+            self.value = Value::Null;
+            Ok(())
+        }
     }
 
     #[inline]
@@ -961,7 +933,6 @@ impl de::Deserializer for Deserializer {
             Value::Bool(v) => visitor.visit_bool(v),
             Value::I64(v) => visitor.visit_i64(v),
             Value::U64(v) => visitor.visit_u64(v),
-            Value::F64(v) => visitor.visit_f64(v),
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => {
                 let len = v.len();
