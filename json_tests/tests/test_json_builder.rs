@@ -1,6 +1,6 @@
 
-use serde_json::value::{Map, Value};
-use serde_json::builder::{ArrayBuilder, ObjectBuilder};
+use canonical_json::value::{Map, Value};
+use canonical_json::builder::{ArrayBuilder, ObjectBuilder};
 
 #[test]
 fn test_array_builder() {

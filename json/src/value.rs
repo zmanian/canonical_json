@@ -5,22 +5,22 @@
 //! # Example of use:
 //!
 //! ```rust
-//! extern crate serde_json;
+//! extern crate canonical_json;
 //!
-//! use serde_json::Value;
+//! use canonical_json::Value;
 //!
 //! fn main() {
 //!     let s = "{\"x\": 1.0, \"y\": 2.0}";
-//!     let value: Value = serde_json::from_str(s).unwrap();
+//!     let value: Value = canonical_json::from_str(s).unwrap();
 //! }
 //! ```
 //!
 //! It is also possible to deserialize from a `Value` type:
 //!
 //! ```rust
-//! extern crate serde_json;
+//! extern crate canonical_json;
 //!
-//! use serde_json::{Value, Map};
+//! use canonical_json::{Value, Map};
 //!
 //! fn main() {
 //!     let mut map = Map::new();
@@ -28,7 +28,7 @@
 //!     map.insert(String::from("y"), Value::F64(2.0));
 //!     let value = Value::Object(map);
 //!
-//!     let map: Map<String, f64> = serde_json::from_value(value).unwrap();
+//!     let map: Map<String, f64> = canonical_json::from_value(value).unwrap();
 //! }
 //! ```
 
@@ -1304,7 +1304,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
 /// Shortcut function to encode a `T` into a JSON `Value`
 ///
 /// ```rust
-/// use serde_json::to_value;
+/// use canonical_json::to_value;
 /// let val = to_value("foo");
 /// assert_eq!(val.as_str(), Some("foo"))
 /// ```

@@ -8,7 +8,7 @@ use serde::de;
 use serde::ser;
 use serde::bytes::{ByteBuf, Bytes};
 
-use serde_json::{
+use canonical_json::{
     self,
     StreamDeserializer,
     Value,
@@ -20,7 +20,7 @@ use serde_json::{
     to_value,
 };
 
-use serde_json::error::{Error, ErrorCode};
+use canonical_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
     () => {
@@ -62,11 +62,11 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
     for &(ref value, out) in errors {
         let out = out.to_string();
 
-        let s = serde_json::to_string(value).unwrap();
+        let s = canonical_json::to_string(value).unwrap();
         assert_eq!(s, out);
 
         let v = to_value(&value);
-        let s = serde_json::to_string(&v).unwrap();
+        let s = canonical_json::to_string(&v).unwrap();
         assert_eq!(s, out);
     }
 }
@@ -77,11 +77,11 @@ fn test_pretty_encode_ok<T>(errors: &[(T, &str)])
     for &(ref value, out) in errors {
         let out = out.to_string();
 
-        let s = serde_json::to_string_pretty(value).unwrap();
+        let s = canonical_json::to_string_pretty(value).unwrap();
         assert_eq!(s, out);
 
         let v = to_value(&value);
-        let s = serde_json::to_string_pretty(&v).unwrap();
+        let s = canonical_json::to_string_pretty(&v).unwrap();
         assert_eq!(s, out);
     }
 }
@@ -1272,7 +1272,7 @@ fn test_missing_renamed_field() {
 
 #[test]
 fn test_find_path() {
-    let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
+    let obj: Value = canonical_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
     assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::U64(1));
     assert!(obj.find_path(&["y"]).unwrap() == &Value::U64(2));
@@ -1281,7 +1281,7 @@ fn test_find_path() {
 
 #[test]
 fn test_lookup() {
-    let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
+    let obj: Value = canonical_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
     assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
     assert!(obj.lookup("y").unwrap() == &Value::U64(2));
@@ -1362,7 +1362,7 @@ fn test_serialize_seq_with_no_len() {
         ),
     ]);
 
-    let s = serde_json::to_string_pretty(&vec).unwrap();
+    let s = canonical_json::to_string_pretty(&vec).unwrap();
     let expected = indoc!("
         [
           [
@@ -1451,7 +1451,7 @@ fn test_serialize_map_with_no_len() {
         ),
     ]);
 
-    let s = serde_json::to_string_pretty(&map).unwrap();
+    let s = canonical_json::to_string_pretty(&map).unwrap();
     let expected = indoc!(r#"
         {
           "a": {
@@ -1482,18 +1482,18 @@ fn test_deserialize_from_stream() {
             let mut stream = stream.unwrap();
             let read_stream = stream.try_clone().unwrap();
 
-            let mut de = serde_json::Deserializer::new(read_stream.bytes());
+            let mut de = canonical_json::Deserializer::new(read_stream.bytes());
             let request = Message::deserialize(&mut de).unwrap();
             let response = Message { message: request.message };
-            serde_json::to_writer(&mut stream, &response).unwrap();
+            canonical_json::to_writer(&mut stream, &response).unwrap();
         }
     });
 
     let mut stream = net::TcpStream::connect("localhost:20000").unwrap();
     let request = Message { message: "hi there".to_string() };
-    serde_json::to_writer(&mut stream, &request).unwrap();
+    canonical_json::to_writer(&mut stream, &request).unwrap();
 
-    let mut de = serde_json::Deserializer::new(stream.bytes());
+    let mut de = canonical_json::Deserializer::new(stream.bytes());
     let response = Message::deserialize(&mut de).unwrap();
 
     assert_eq!(request, response);
@@ -1506,8 +1506,8 @@ fn test_serialize_rejects_non_key_maps() {
         3 => 4
     );
 
-    match serde_json::to_vec(&map).unwrap_err() {
-        serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
+    match canonical_json::to_vec(&map).unwrap_err() {
+        canonical_json::Error::Syntax(canonical_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
         _ => panic!("integers used as keys"),
     }
 }
@@ -1516,30 +1516,30 @@ fn test_serialize_rejects_non_key_maps() {
 fn test_bytes_ser() {
     let buf = vec![];
     let bytes = Bytes::from(&buf);
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[]".to_string());
+    assert_eq!(canonical_json::to_string(&bytes).unwrap(), "[]".to_string());
 
     let buf = vec![1, 2, 3];
     let bytes = Bytes::from(&buf);
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
+    assert_eq!(canonical_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 
 #[test]
 fn test_byte_buf_ser() {
     let bytes = ByteBuf::new();
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[]".to_string());
+    assert_eq!(canonical_json::to_string(&bytes).unwrap(), "[]".to_string());
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
+    assert_eq!(canonical_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 
 #[test]
 fn test_byte_buf_de() {
     let bytes = ByteBuf::new();
-    let v: ByteBuf = serde_json::from_str("[]").unwrap();
+    let v: ByteBuf = canonical_json::from_str("[]").unwrap();
     assert_eq!(v, bytes);
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    let v: ByteBuf = serde_json::from_str("[1, 2, 3]").unwrap();
+    let v: ByteBuf = canonical_json::from_str("[1, 2, 3]").unwrap();
     assert_eq!(v, bytes);
 }
 
@@ -1599,7 +1599,7 @@ fn test_json_stream_empty() {
 #[test]
 fn test_json_pointer() {
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
-    let data: Value = serde_json::from_str(r#"{
+    let data: Value = canonical_json::from_str(r#"{
         "foo": ["bar", "baz"],
         "": 0,
         "a/b": 1,

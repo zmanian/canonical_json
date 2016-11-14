@@ -12,7 +12,7 @@ extern crate serde_derive;
 extern crate num_traits;
 extern crate rustc_serialize;
 extern crate serde;
-extern crate serde_json;
+extern crate canonical_json;
 extern crate test;
 
 #[cfg(feature = "with-syntex")]

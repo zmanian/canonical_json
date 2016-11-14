@@ -6,7 +6,7 @@
 //! encode structured data in a text format that can be easily read by humans.  Its simple syntax
 //! and native compatibility with JavaScript have made it a widely used format.
 //!
-//! Data types that can be encoded are JavaScript types (see the `serde_json:Value` enum for more
+//! Data types that can be encoded are JavaScript types (see the `canonical_json:Value` enum for more
 //! details):
 //!
 //! * `Bool`: equivalent to rust's `bool`
@@ -16,8 +16,8 @@
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!    same array
-//! * `Object`: equivalent to rust's `BTreeMap<String, serde_json::Value>`; set the
-//!    `preserve_order` feature to use `LinkedHashMap<String, serde_json::Value>` instead
+//! * `Object`: equivalent to rust's `BTreeMap<String, canonical_json::Value>`; set the
+//!    `preserve_order` feature to use `LinkedHashMap<String, canonical_json::Value>` instead
 //! * `Null`
 //!
 //! An object is a series of string keys mapping to values, in `"key": value` format.  Arrays are
@@ -71,8 +71,8 @@
 //! `serde::Deserialize` trait.  Serde provides provides an annotation to automatically generate
 //! the code for these traits: `#[derive(Serialize, Deserialize)]`.
 //!
-//! The JSON API also provides an enum `serde_json::Value` and a method `to_value` to serialize
-//! objects.  A `serde_json::Value` value can be serialized as a string or buffer using the
+//! The JSON API also provides an enum `canonical_json::Value` and a method `to_value` to serialize
+//! objects.  A `canonical_json::Value` value can be serialized as a string or buffer using the
 //! functions described above.  You can also use the `json::Serializer` object, which implements the
 //! `Serializer` trait.
 //!
@@ -81,12 +81,12 @@
 //! ## Parsing a `str` to `Value` and reading the result
 //!
 //! ```rust
-//! extern crate serde_json;
+//! extern crate canonical_json;
 //!
-//! use serde_json::Value;
+//! use canonical_json::Value;
 //!
 //! fn main() {
-//!     let data: Value = serde_json::from_str("{\"foo\": 13, \"bar\": \"baz\"}").unwrap();
+//!     let data: Value = canonical_json::from_str("{\"foo\": 13, \"bar\": \"baz\"}").unwrap();
 //!     println!("data: {:?}", data);
 //!     // data: {"bar":"baz","foo":13}
 //!     println!("object? {}", data.is_object());

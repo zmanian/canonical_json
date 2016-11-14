@@ -9,7 +9,7 @@
 extern crate serde_derive;
 
 extern crate serde;
-extern crate serde_json;
+extern crate canonical_json;
 extern crate skeptic;
 
 #[cfg(feature = "with-syntex")]

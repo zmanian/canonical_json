@@ -21,29 +21,29 @@ This crate works with Cargo and can be found on
 ```toml
 [dependencies]
 serde = "0.8"
-serde_json = "0.8"
+canonical_json = "0.8"
 ```
 
 Using Serde JSON
 ================
 
-`serde_json` is very simple to use out of the box:
+`canonical_json` is very simple to use out of the box:
 
 ```rust
 extern crate serde;
-extern crate serde_json;
+extern crate canonical_json;
 
-use serde_json::Map;
+use canonical_json::Map;
 
 fn main() {
     let mut map = Map::new();
     map.insert("x".to_string(), 1.0);
     map.insert("y".to_string(), 2.0);
 
-    let s = serde_json::to_string(&map).unwrap();
+    let s = canonical_json::to_string(&map).unwrap();
     assert_eq!(s, "{\"x\":1.0,\"y\":2.0}");
 
-    let deserialized_map: Map<String, f64> = serde_json::from_str(&s).unwrap();
+    let deserialized_map: Map<String, f64> = canonical_json::from_str(&s).unwrap();
     assert_eq!(map, deserialized_map);
 }
 ```
@@ -68,7 +68,7 @@ Then run:
 extern crate serde_derive;
 
 extern crate serde;
-extern crate serde_json;
+extern crate canonical_json;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Point {
@@ -79,10 +79,10 @@ struct Point {
 fn main() {
     let point = Point { x: 1.0, y: 2.0 };
 
-    let s = serde_json::to_string(&point).unwrap();
+    let s = canonical_json::to_string(&point).unwrap();
     assert_eq!(s, "{\"x\":1.0,\"y\":2.0}");
 
-    let deserialized_point: Point = serde_json::from_str(&s).unwrap();
+    let deserialized_point: Point = canonical_json::from_str(&s).unwrap();
     assert_eq!(point, deserialized_point);
 }
 ```

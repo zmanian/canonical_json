@@ -17,7 +17,7 @@
 //! # Example
 //!
 //! ```rust
-//! use serde_json::builder::ObjectBuilder;
+//! use canonical_json::builder::ObjectBuilder;
 //!
 //! let value = ObjectBuilder::new()
 //!     .insert("name", "point")

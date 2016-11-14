@@ -1,7 +1,7 @@
 //! JSON Errors
 //!
 //! This module is centered around the `Error` and `ErrorCode` types, which represents all possible
-//! `serde_json` errors.
+//! `canonical_json` errors.
 
 use std::error;
 use std::fmt;
