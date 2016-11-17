@@ -1,4 +1,4 @@
-use std::{char, cmp, io, str};
+use std::{cmp, io, str};
 
 use serde::iter::LineColIterator;
 
@@ -338,7 +338,6 @@ impl<'a> Read for StrRead<'a> {
 
 //////////////////////////////////////////////////////////////////////////////
 
-const CT: bool = true; // control character \x00...\x1F
 const QU: bool = true; // quote \x22
 const BS: bool = true; // backslash \x5C
 const O: bool = false; // allow unescaped
@@ -348,8 +347,8 @@ const O: bool = false; // allow unescaped
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static ESCAPE: [bool; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-    CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 0
-    CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 1
+     O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // 0
+     O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // 1
      O,  O, QU,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // 2
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // 3
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // 4
@@ -389,96 +388,10 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     match ch {
         b'"' => scratch.push(b'"'),
         b'\\' => scratch.push(b'\\'),
-        b'/' => scratch.push(b'/'),
-        b'b' => scratch.push(b'\x08'),
-        b'f' => scratch.push(b'\x0c'),
-        b'n' => scratch.push(b'\n'),
-        b'r' => scratch.push(b'\r'),
-        b't' => scratch.push(b'\t'),
-        b'u' => {
-            let c =
-                match try!(decode_hex_escape(read)) {
-                    0xDC00...0xDFFF => {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                    }
-
-                    // Non-BMP characters are encoded as a sequence of
-                    // two hex escapes, representing UTF-16 surrogates.
-                    n1 @ 0xD800...0xDBFF => {
-                        match (try!(read.next().map_err(Error::Io)),
-                               try!(read.next().map_err(Error::Io))) {
-                            (Some(b'\\'), Some(b'u')) => (),
-                            _ => {
-                                return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                            }
-                        }
-
-                        let n2 = try!(decode_hex_escape(read));
-
-                        if n2 < 0xDC00 || n2 > 0xDFFF {
-                            return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                        }
-
-                        let n = (((n1 - 0xD800) as u32) << 10 |
-                                 (n2 - 0xDC00) as u32) +
-                                0x1_0000;
-
-                        match char::from_u32(n as u32) {
-                            Some(c) => c,
-                            None => {
-                                return error(read, ErrorCode::InvalidUnicodeCodePoint);
-                            }
-                        }
-                    }
-
-                    n => {
-                        match char::from_u32(n as u32) {
-                            Some(c) => c,
-                            None => {
-                                return error(read, ErrorCode::InvalidUnicodeCodePoint);
-                            }
-                        }
-                    }
-                };
-
-            // FIXME: this allocation is required in order to be compatible with stable
-            // rust, which doesn't support encoding a `char` into a stack buffer.
-            let mut buf = String::new();
-            buf.push(c);
-            scratch.extend(buf.bytes());
-        }
         _ => {
             return error(read, ErrorCode::InvalidEscape);
         }
     }
 
     Ok(())
-}
-
-fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
-    let mut i = 0;
-    let mut n = 0;
-    while i < 4 && try!(read.peek()).is_some() {
-        n = match try!(read.next()).unwrap_or(b'\x00') {
-            c @ b'0'...b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
-            b'a' | b'A' => n * 16_u16 + 10_u16,
-            b'b' | b'B' => n * 16_u16 + 11_u16,
-            b'c' | b'C' => n * 16_u16 + 12_u16,
-            b'd' | b'D' => n * 16_u16 + 13_u16,
-            b'e' | b'E' => n * 16_u16 + 14_u16,
-            b'f' | b'F' => n * 16_u16 + 15_u16,
-            _ => {
-                return error(read, ErrorCode::InvalidEscape);
-            }
-        };
-
-        i += 1;
-    }
-
-    // Error out if we didn't parse 4 digits.
-    if i != 4 {
-        return error(read, ErrorCode::InvalidEscape);
-    }
-
-    Ok(n)
 }

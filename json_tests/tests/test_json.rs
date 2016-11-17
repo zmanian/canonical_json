@@ -118,6 +118,12 @@ fn test_write_str() {
     let tests = &[
         ("", "\"\""),
         ("foo", "\"foo\""),
+        ("\\", "\"\\\\\""),
+        ("\"", "\"\\\"\""),
+        ("\n", "\"\n\""),
+        ("\r", "\"\r\""),
+        ("\t", "\"\t\""),
+        ("\u{2603}", "\"\u{2603}\""),
     ];
     test_encode_ok(tests);
 }
@@ -154,7 +160,7 @@ fn test_write_list() {
     test_encode_ok(&[
         (
             long_test_list.clone(),
-            "[false,null,[\"foo\\nbar\",4]]",
+            "[false,null,[\"foo\nbar\",4]]",
         ),
     ]);
 }
@@ -231,7 +237,7 @@ fn test_write_object() {
             complex_obj.clone(),
             "{\
                 \"b\":[\
-                    {\"c\":\"\\f\\u001f\\r\"},\
+                    {\"c\":\"\x0c\x1f\r\"},\
                     {\"d\":\"\"}\
                 ]\
             }"
@@ -486,27 +492,29 @@ fn test_parse_string() {
         ("\"lol", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 4)),
         (" \"foo\" ", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 1)),
         ("\"lol\"a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 6)),
-        ("\"\\uD83C\\uFFFF\"", Error::Syntax(ErrorCode::LoneLeadingSurrogateInHexEscape, 1, 13)),
+        ("\"\\b\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
+        ("\"\\n\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
+        ("\"\\r\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
+        ("\"\\t\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
+        ("\"\\u12ab\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
+        ("\"\\uAB12\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
+        ("\"\\uD83C\\uDF95\"", Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
     ]);
 
     test_parse_slice_err::<String>(vec![
-        (&[b'"', 159, 146, 150, b'"'],
-            Error::Syntax(ErrorCode::InvalidUnicodeCodePoint, 1, 5)),
         (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
-            Error::Syntax(ErrorCode::InvalidUnicodeCodePoint, 1, 7)),
+            Error::Syntax(ErrorCode::InvalidEscape, 1, 3)),
     ]);
 
     test_parse_ok(vec![
         ("\"\"", "".to_string()),
         ("\"foo\"", "foo".to_string()),
         ("\"\\\"\"", "\"".to_string()),
-        ("\"\\b\"", "\x08".to_string()),
-        ("\"\\n\"", "\n".to_string()),
-        ("\"\\r\"", "\r".to_string()),
-        ("\"\\t\"", "\t".to_string()),
-        ("\"\\u12ab\"", "\u{12ab}".to_string()),
-        ("\"\\uAB12\"", "\u{AB12}".to_string()),
-        ("\"\\uD83C\\uDF95\"", "\u{1F395}".to_string()),
+        ("\"\\\\\"", "\\".to_string()),
+        ("\"\n\"", "\n".to_string()),
+        ("\"\r\"", "\r".to_string()),
+        ("\"\t\"", "\t".to_string()),
+        ("\"\u{2603}\"", "\u{2603}".to_string()),
     ]);
 }
 

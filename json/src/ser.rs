@@ -785,17 +785,7 @@ pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
             try!(wr.write_all(&bytes[start..i]));
         }
 
-        if escape == b'u' {
-            static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
-            try!(wr.write_all(&[b'\\',
-                                b'u',
-                                b'0',
-                                b'0',
-                                HEX_DIGITS[(byte >> 4) as usize],
-                                HEX_DIGITS[(byte & 0xF) as usize]]));
-        } else {
-            try!(wr.write_all(&[b'\\', escape]));
-        }
+        try!(wr.write_all(&[b'\\', escape]));
 
         start = i + 1;
     }
@@ -808,22 +798,16 @@ pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
     Ok(())
 }
 
-const BB: u8 = b'b';  // \x08
-const TT: u8 = b't';  // \x09
-const NN: u8 = b'n';  // \x0A
-const FF: u8 = b'f';  // \x0C
-const RR: u8 = b'r';  // \x0D
 const QU: u8 = b'"';  // \x22
 const BS: u8 = b'\\'; // \x5C
-const U: u8 = b'u';   // \x00...\x1F except the ones above
 
 // Lookup table of escape sequences. A value of b'x' at index i means that byte
 // i is escaped as "\x" in JSON. A value of 0 means that byte i is not escaped.
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static ESCAPE: [u8; 256] = [
     //  1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-    U,  U,  U,  U,  U,  U,  U,  U, BB, TT, NN,  U, FF, RR,  U,  U, // 0
-    U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U, // 1
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 1
     0,  0, QU,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 2
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 3
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 4
