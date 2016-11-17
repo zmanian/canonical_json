@@ -80,6 +80,12 @@ pub enum ErrorCode {
     /// Object key is not a string.
     KeyMustBeAString,
 
+    /// Object keys must not be repeated.
+    RepeatedKey,
+
+    /// Object keys must be listed in lexicographical order.
+    UnsortedKey,
+
     /// Lone leading surrogate in hex escape.
     LoneLeadingSurrogateInHexEscape,
 
@@ -133,6 +139,8 @@ impl fmt::Display for ErrorCode {
                 "invalid unicode code point".fmt(f)
             }
             ErrorCode::KeyMustBeAString => "key must be a string".fmt(f),
+            ErrorCode::RepeatedKey => "object contains a repeated key".fmt(f),
+            ErrorCode::UnsortedKey => "object keys are unsorted".fmt(f),
             ErrorCode::LoneLeadingSurrogateInHexEscape => {
                 "lone leading surrogate in hex escape".fmt(f)
             }

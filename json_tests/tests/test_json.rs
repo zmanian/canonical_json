@@ -581,6 +581,13 @@ fn test_parse_object() {
         ("{\"a\":1,}", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 8)),
         ("{}a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 3)),
         ("{ }", Error::Syntax(ErrorCode::UnexpectedWhitespace, 1, 2)),
+        ("{\"a\":1,\"a\":2}", Error::Syntax(ErrorCode::RepeatedKey, 1, 10)),
+        ("{\"b\":1,\"a\":2}", Error::Syntax(ErrorCode::UnsortedKey, 1, 10)),
+        ("{\"a\":1,\"c\":2,\"b\":3}", Error::Syntax(ErrorCode::UnsortedKey, 1, 16)),
+    ]);
+
+    test_parse_err::<BTreeMap<String, BTreeMap<String, i32>>>(vec![
+        ("{\"a\":{},\"b\":{\"i\":1},\"c\":{\"z\":1,\"\":2}}", Error::Syntax(ErrorCode::UnsortedKey, 1, 33)),
     ]);
 
     test_parse_ok(vec![
@@ -684,8 +691,8 @@ fn test_parse_enum_errors() {
         ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::InvalidLength(1), 1, 10)),
         ("{\"Cat\":[0,\"\",2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 13)),
         (
-            "{\"Cat\":{\"age\":5,\"name\":\"Kate\",\"foo\":\"bar\"}",
-            Error::Syntax(ErrorCode::UnknownField("foo".to_string()), 1, 35)
+            "{\"Cat\":{\"age\":5,\"foo\":\"bar\",\"name\":\"Kate\"}",
+            Error::Syntax(ErrorCode::UnknownField("foo".to_string()), 1, 21)
         ),
     ]);
 }
@@ -1091,7 +1098,7 @@ fn test_json_stream_empty() {
 #[test]
 fn test_json_pointer() {
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
-    let data: Value = canonical_json::from_str(r#"{"foo":["bar","baz"],"":0,"a/b":1,"c%d":2,"e^f":3,"g|h":4,"i\\j":5,"k\"l":6," ":7,"m~n":8}"#).unwrap();
+    let data: Value = canonical_json::from_str(r#"{"":0," ":7,"a/b":1,"c%d":2,"e^f":3,"foo":["bar","baz"],"g|h":4,"i\\j":5,"k\"l":6,"m~n":8}"#).unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
     assert_eq!(data.pointer("/foo").unwrap(),
         &Value::Array(vec![Value::String("bar".to_owned()),

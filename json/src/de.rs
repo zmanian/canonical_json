@@ -395,6 +395,73 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     }
 }
 
+struct AscendingKeyDeserializer<'a, R: Read + 'a> {
+    de: &'a mut DeserializerImpl<R>,
+    cur_key: Option<String>,
+}
+
+impl<'a, R: Read> AscendingKeyDeserializer<'a, R> {
+    fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        try!(self.de.reject_whitespace());
+
+        if try!(self.de.eof()) {
+            return Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue));
+        }
+
+        let value = match try!(self.de.peek_or_null()) {
+            b'"' => {
+                self.de.eat_char();
+                self.de.str_buf.clear();
+                let s = try!(self.de.read.parse_str(&mut self.de.str_buf)).to_string();
+                match self.cur_key {
+                    Some(ref cur_key) if &s == cur_key => {
+                        Err(self.de.error(ErrorCode::RepeatedKey))
+                    }
+                    Some(ref cur_key) if &s < cur_key => {
+                        Err(self.de.error(ErrorCode::UnsortedKey))
+                    }
+                    _ => {
+                        self.cur_key = Some(s.clone());
+                        visitor.visit_str(&s)
+                    }
+                }
+            }
+            _ => Err(self.de.peek_error(ErrorCode::ExpectedSomeValue)),
+        };
+
+        match value {
+            Ok(value) => Ok(value),
+            // The de::Error and From<de::value::Error> impls both create errors
+            // with unknown line and column. Fill in the position here by
+            // looking at the current index in the input. There is no way to
+            // tell whether this should call `error` or `peek_error` so pick the
+            // one that seems correct more often. Worst case, the position is
+            // off by one character.
+            Err(Error::Syntax(code, 0, 0)) => Err(self.de.error(code)),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<'a, R: Read> de::Deserializer for AscendingKeyDeserializer<'a, R> {
+    type Error = Error;
+
+    #[inline]
+    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        self.parse_value(visitor)
+    }
+
+    forward_to_deserialize! {
+        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
+        unit option seq seq_fixed_size bytes map unit_struct newtype_struct
+        tuple_struct struct struct_field tuple enum ignored_any
+    }
+}
+
 struct SeqVisitor<'a, R: Read + 'a> {
     de: &'a mut DeserializerImpl<R>,
     first: bool,
@@ -455,6 +522,7 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
 struct MapVisitor<'a, R: Read + 'a> {
     de: &'a mut DeserializerImpl<R>,
     first: bool,
+    cur_key: Option<String>,
 }
 
 impl<'a, R: Read + 'a> MapVisitor<'a, R> {
@@ -462,6 +530,7 @@ impl<'a, R: Read + 'a> MapVisitor<'a, R> {
         MapVisitor {
             de: de,
             first: true,
+            cur_key: None,
         }
     }
 }
@@ -497,7 +566,15 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
         }
 
         match try!(self.de.peek()) {
-            Some(b'"') => Ok(Some(try!(de::Deserialize::deserialize(self.de)))),
+            Some(b'"') => {
+                let mut ordered_de = AscendingKeyDeserializer {
+                    de: &mut self.de,
+                    cur_key: self.cur_key.take(),
+                };
+                let key = try!(de::Deserialize::deserialize(&mut ordered_de));
+                self.cur_key = ordered_de.cur_key;
+                Ok(Some(key))
+            }
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
             None => Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue)),
         }
