@@ -1,82 +1,97 @@
-Canonical JSON
+                                 Canonical JSON
 
-A "canonical JSON" format is provided in order to provide meaningful and
-repeatable hashes of JSON-encoded data. Canonical JSON is parsable with any full
-JSON parser, but security-conscious applications will want to verify that input
-is in canonical form before authenticating any hash or signature on that input.
+1. Introduction
 
-Grammar
+  Canonical JSON is a subset of JSON in which values each have a single,
+  unambiguous serialized form. This provides meaningful and repeatable hashes
+  of encoded data. Canonical JSON is parsable with any full JSON parser.
 
-    object:
-        {}
-        { members } 
+2. Differences from JSON
 
-    members:
-        pair
-        pair , members
+  - Whitespace between tokens is disallowed. Leading and trailing whitespace
+    is likewise disallowed.
+  - Floating point numbers, exponents and "minus zero" are all disallowed.
+  - Object keys must appear in lexiographical order and must not be repeated.
+  - Strings are uninterpreted bytes, with the only escaped byte values being
+    backslash and quote. Escaping is mandatory for those two characters.
+  - String contents are not guaranteed be parsable as UTF-8. Be aware that
+    encoded data may contain embedded control characters and nulls.
 
-    pair:
-        string : value
+3. Example
 
-    array:
-        []
-        [ elements ]
+  JSON:
 
-    elements:
-        value
-        value , elements
+    {
+      "foo": "bar",
+      "abc": 9e3,
+      "snowman": "\u2603",
+      "zoo":
+        [
+          "zorilla",
+          "anteater"
+        ]
+    }
 
-    value:
-        string
-        number
-        object
-        array
-        true
-        false
-        null
+  Canonical JSON:
 
-    string:
-        ""
-        " chars "
+    {"abc":9000,"foo":"bar","snowman":"☃","zoo":["zorilla","anteater"]}
 
-    chars:
-        char
-        char chars
+4. Grammar
 
-    char:
-        any byte except hex 22 (") or hex 5C (\)
-        \\
-        \"
+  value:
+    object
+    array
+    string
+    number
+    true
+    false
+    null
 
-    number:
-        int
+  object:
+    {}
+    { members }
 
-    int:
-        digit
-        digit1-9 digits
-        - digit1-9
-        - digit1-9 digits
+  members:
+    pair
+    pair , members
 
-    digits:
-        digit
-        digit digits
+  pair:
+    string : value
 
-Whitespace is not permitted between tokens. Leading and trailing whitespace is
-likewise disallowed. The members production in object must consist of keys in
-lexicographically sorted order. Strings are uninterpreted bytes, with only two
-escaped byte values. Because only two byte values are escaped, be aware that
-JSON-encoded data may contain embedded control characters and nulls. It is
-suggested that unicode strings be represented as the UTF-8 encoding of unicode
-Normalization Form C (UAX #15). However, arbitrary content may be represented
-as a string: it is not guaranteed that string contents can be meaningfully
-parsed as UTF-8.
+  array:
+    []
+    [ elements ]
 
-Notes
+  elements:
+    value
+    value , elements
 
-- Floating point numbers are not allowed in canonical JSON. Neither are
-  leading zeros or "minus 0" for integers.
-- All map keys must be quoted, and must appear in sorted order.
-- All whitespace is eliminated.
-- Trailing commas in members and elements are not allowed.
-- Only one 'escape' sequence is defined for strings, and its use is mandatory
-  for quote and backslash.
+  string:
+    ""
+    " chars "
+
+  chars:
+    char
+    char chars
+
+  char:
+    any byte except hex 22 (") or hex 5C (\)
+    \\
+    \"
+
+  number:
+    int
+
+  int:
+    digit
+    digit1-9 digits
+    - digit1-9
+    - digit1-9 digits
+
+  digits:
+    digit
+    digit digits
+
+5. References
+
+  Spec derived from: http://wiki.laptop.org/go/Canonical_JSON
