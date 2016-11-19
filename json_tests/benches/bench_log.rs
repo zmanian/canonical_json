@@ -1,11 +1,11 @@
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use num_traits::FromPrimitive;
 use test::{Bencher, black_box};
 
 use rustc_serialize;
 
 use serde::de::{self, Deserializer};
-use serde::ser::{self, Serialize, Serializer};
+use serde::ser::{self, Serialize};
 use canonical_json::ser::escape_str;
 use canonical_json;
 use std::str::FromStr;
