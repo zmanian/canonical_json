@@ -11,7 +11,8 @@ keywords = ["json", "serde", "serialization"]
 unstable-testing = ["clippy"]
 
 [dependencies]
-serde = "0.8.13"
+serde = "0.8"
+serde_json = "0.8"
 num-traits = "~0.1.32"
 clippy = { version = "^0.*", optional = true }
 itoa = "0.1"

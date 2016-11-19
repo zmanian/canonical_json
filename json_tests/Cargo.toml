@@ -21,6 +21,7 @@ indoc = "*"
 num-traits = "*"
 rustc-serialize = "*"
 serde = "0.8"
+serde_json = "0.8"
 canonical_json = { path = "../json" }
 serde_derive = { version = "0.8", optional = true }
 skeptic = "0.6"

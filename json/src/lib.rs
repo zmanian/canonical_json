@@ -110,6 +110,8 @@
 //! }
 //! ```
 
+#![feature(try_from)]
+
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 #![cfg_attr(feature = "clippy", deny(clippy, clippy_pedantic))]
@@ -139,6 +141,7 @@ extern crate num_traits;
 extern crate core;
 #[macro_use]
 extern crate serde;
+extern crate serde_json;
 extern crate itoa;
 extern crate dtoa;
 

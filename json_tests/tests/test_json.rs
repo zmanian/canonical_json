@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::i64;
 use std::marker::PhantomData;
@@ -7,6 +8,7 @@ use std::u64;
 use serde::de;
 use serde::ser;
 use serde::bytes::{ByteBuf, Bytes};
+use serde_json;
 
 use canonical_json::{
     self,
@@ -1092,4 +1094,56 @@ fn test_json_stream_empty() {
     );
 
     assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_try_from_json() {
+    let json_obj = serde_json::Value::Object(treemap!(
+        "b".to_string() => serde_json::Value::Array(vec![
+            serde_json::Value::Object(treemap!("c".to_string() => serde_json::Value::String("\x0c\x1f\r".to_string()))),
+            serde_json::Value::Object(treemap!("d".to_string() => serde_json::Value::String("".to_string()))),
+            serde_json::Value::Bool(true),
+            serde_json::Value::Null,
+        ])
+    ));
+    let canonical_json_obj = Value::Object(treemap!(
+        "b".to_string() => Value::Array(vec![
+            Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
+            Value::Object(treemap!("d".to_string() => Value::String("".to_string()))),
+            Value::Bool(true),
+            Value::Null,
+        ])
+    ));
+    let converted: Value = TryFrom::try_from(json_obj).unwrap();
+    assert_eq!(converted, canonical_json_obj);
+
+    let json_obj = serde_json::Value::Object(treemap!(
+        "b".to_string() => serde_json::Value::Array(vec![
+            serde_json::Value::F64(9999.99),
+        ])
+    ));
+    let converted: Result<Value, ErrorCode> = TryFrom::try_from(json_obj);
+    assert_eq!(converted, Err(ErrorCode::InvalidNumber));
+}
+
+#[test]
+fn test_from_canonical_json() {
+    let canonical_json_obj = Value::Object(treemap!(
+        "b".to_string() => Value::Array(vec![
+            Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
+            Value::Object(treemap!("d".to_string() => Value::String("".to_string()))),
+            Value::Bool(true),
+            Value::Null,
+        ])
+    ));
+    let json_obj = serde_json::Value::Object(treemap!(
+        "b".to_string() => serde_json::Value::Array(vec![
+            serde_json::Value::Object(treemap!("c".to_string() => serde_json::Value::String("\x0c\x1f\r".to_string()))),
+            serde_json::Value::Object(treemap!("d".to_string() => serde_json::Value::String("".to_string()))),
+            serde_json::Value::Bool(true),
+            serde_json::Value::Null,
+        ])
+    ));
+    let converted: serde_json::Value = From::from(canonical_json_obj);
+    assert_eq!(converted, json_obj);
 }

@@ -35,6 +35,7 @@
 
 use std::collections::{BTreeMap, btree_map};
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::str;
@@ -44,6 +45,7 @@ use num_traits::NumCast;
 
 use serde::de;
 use serde::ser;
+use serde_json;
 
 use error::{Error, ErrorCode};
 
@@ -1197,5 +1199,48 @@ impl<T: ?Sized> ToJson for T
 {
     fn to_json(&self) -> Value {
         to_value(&self)
+    }
+}
+
+impl TryFrom<serde_json::Value> for Value {
+    type Err = ErrorCode;
+
+    fn try_from(value: serde_json::Value) -> Result<Value, ErrorCode> {
+        match value {
+            serde_json::Value::Null => Ok(Value::Null),
+            serde_json::Value::Bool(b) => Ok(Value::Bool(b)),
+            serde_json::Value::I64(i) => Ok(Value::I64(i)),
+            serde_json::Value::U64(u) => Ok(Value::U64(u)),
+            serde_json::Value::F64(_) => Err(ErrorCode::InvalidNumber),
+            serde_json::Value::String(s) => Ok(Value::String(s)),
+            serde_json::Value::Array(a) => Ok(Value::Array(try!(
+                a.into_iter().map(TryFrom::try_from).collect()
+            ))),
+            serde_json::Value::Object(o) => Ok(Value::Object(try!(
+                o.into_iter().map(|(k, v)| {
+                    TryFrom::try_from(v).map(|v| (k, v))
+                }).collect()
+            ))),
+        }
+    }
+}
+
+impl From<Value> for serde_json::Value {
+    fn from(value: Value) -> serde_json::Value {
+        match value {
+            Value::Null => serde_json::Value::Null,
+            Value::Bool(b) => serde_json::Value::Bool(b),
+            Value::I64(i) => serde_json::Value::I64(i),
+            Value::U64(u) => serde_json::Value::U64(u),
+            Value::String(s) => serde_json::Value::String(s),
+            Value::Array(a) => serde_json::Value::Array(
+                a.into_iter().map(From::from).collect()
+            ),
+            Value::Object(o) => serde_json::Value::Object(
+                o.into_iter().map(|(k, v)| {
+                    (k, From::from(v))
+                }).collect()
+            ),
+        }
     }
 }

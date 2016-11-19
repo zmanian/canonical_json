@@ -1,3 +1,5 @@
+#![feature(try_from)]
+
 #![cfg_attr(feature = "nightly-testing", feature(plugin))]
 #![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 
@@ -9,6 +11,7 @@
 extern crate serde_derive;
 
 extern crate serde;
+extern crate serde_json;
 extern crate canonical_json;
 extern crate skeptic;
 
