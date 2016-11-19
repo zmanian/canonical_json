@@ -1,98 +1,134 @@
-//! JSON and serialization
+//! Serialization and deserialization for Canonical JSON
 //!
-//! # What is JSON?
+//! # What is Canonical JSON?
 //!
-//! JSON (JavaScript Object Notation) is a way to write data in JavaScript.  Like XML, it allows to
-//! encode structured data in a text format that can be easily read by humans.  Its simple syntax
-//! and native compatibility with JavaScript have made it a widely used format.
+//! Canonical JSON is a subset of JSON in which values each have a single,
+//! unambiguous serialized form. It provides meaningful and repeatable hashes
+//! of encoded data. Canonical JSON is parsable with any full JSON parser.
 //!
-//! Data types that can be encoded are JavaScript types (see the `canonical_json:Value` enum for more
-//! details):
+//! Data types that can be represented include booleans, integers, strings,
+//! arrays, maps and null values. See [`Value`] for more details.
 //!
-//! * `Bool`: equivalent to rust's `bool`
-//! * `I64`: equivalent to rust's `i64`
-//! * `U64`: equivalent to rust's `u64`
-//! * `String`: equivalent to rust's `String`
-//! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
-//!    same array
-//! * `Object`: equivalent to rust's `BTreeMap<String, canonical_json::Value>`
-//! * `Null`
+//! [`Value`]: value/enum.Value.html
 //!
-//! An object is a series of string keys mapping to values, in `"key": value` format.  Arrays are
-//! enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).  A simple JSON
-//! document encoding a person, his/her age, address and phone numbers could look like
+//! ## Compared to JSON
 //!
-//! ```ignore
+//! - Whitespace between tokens is disallowed. Leading and trailing whitespace
+//!   is likewise disallowed.
+//! - Floating point numbers, exponents and "minus zero" are all disallowed.
+//! - Object keys must appear in lexiographical order and must not be repeated.
+//! - Strings are uninterpreted bytes, with the only escaped byte values being
+//!   backslash and quote. Escaping is mandatory for those two characters.
+//! - String contents are not guaranteed be parsable as UTF-8. Be aware that
+//!   encoded data may contain embedded control characters and nulls.
+//!
+//! ## Example
+//!
+//! This JSON value:
+//!
+//! ```json
 //! {
-//!     "FirstName": "John",
-//!     "LastName": "Doe",
-//!     "Age": 43,
-//!     "Address": {
-//!         "Street": "Downing Street 10",
-//!         "City": "London",
-//!         "Country": "Great Britain"
-//!     },
-//!     "PhoneNumbers": [
-//!         "+44 1234567",
-//!         "+44 2345678"
+//!   "foo": "bar",
+//!   "abc": 9e3,
+//!   "snowman": "\u2603",
+//!   "zoo":
+//!     [
+//!       "zorilla",
+//!       "anteater"
 //!     ]
 //! }
 //! ```
 //!
-//! If we assume that `FirstName` is optional and all other fields are mandatory, the above JSON could
-//! correspond to the following Rust structs:
+//! becomes this in Canonical JSON:
 //!
-//! ```ignore
-//! #[derive(Serialize, Deserialize)]
-//! struct Data {
-//!     #[serde(rename="FirstName")] // to comply with Rust coding standards
-//!     first_name: Option<String>,
-//!     LastName: String,
-//!     Age: u32,
-//!     Address: Address,
-//!     PhoneNumbers: Vec<String>
-//! }
-//!
-//! #[derive(Serialize, Deserialize)]
-//! struct Address {
-//!     Street: String,
-//!     City: String,
-//!     Country: String
-//! }
+//! ```json
+//! {"abc":9000,"foo":"bar","snowman":"☃","zoo":["zorilla","anteater"]}
 //! ```
 //!
 //! # Type-based Serialization and Deserialization
 //!
-//! Serde provides a mechanism for low boilerplate serialization & deserialization of values to and
-//! from JSON via the serialization API.  To be able to serialize a piece of data, it must implement
-//! the `serde::Serialize` trait.  To be able to deserialize a piece of data, it must implement the
-//! `serde::Deserialize` trait.  Serde provides provides an annotation to automatically generate
-//! the code for these traits: `#[derive(Serialize, Deserialize)]`.
+//! Structs and enums can be serialized and deserialized to/from Canonical JSON
+//! without writing boilerplate code. To be able to serialize and deserialize
+//! a piece of data, it must implement the [`Serialize`] and [`Deserialize`] traits.
+//! Serde provides provides an annotation to automatically derive
+//! these traits: `#[derive(Serialize, Deserialize)]`.
 //!
-//! The JSON API also provides an enum `canonical_json::Value` and a method `to_value` to serialize
-//! objects.  A `canonical_json::Value` value can be serialized as a string or buffer using the
-//! functions described above.  You can also use the `json::Serializer` object, which implements the
-//! `Serializer` trait.
+//! To derive [`Serialize`] and [`Deserialize`], add this to your crate root:
+//!
+//! [`Serialize`]: ../serde/ser/trait.Serialize.html
+//! [`Deserialize`]: ../serde/de/trait.Deserialize.html
+//!
+//! ```ignore
+//! #![feature(proc_macro)]
+//!
+//! #[macro_use]
+//! extern crate serde_derive;
+//! ```
+//!
+//! then annotate your data structure like this:
+//!
+//! ```ignore
+//! #[derive(Serialize, Deserialize)]
+//! struct Point {
+//!     x: i64,
+//!     y: i64,
+//! }
+//!
+//! ```
+//!
+//! To customize how a data structure is serialized, for example by renaming
+//! fields, see the [Serde documentation on attributes].
+//!
+//! [Serde documentation on attributes]: https://serde.rs/attributes.html
 //!
 //! # Examples of use
 //!
-//! ## Parsing a `str` to `Value` and reading the result
+//! ## Serializing and Deserializing a struct
 //!
-//! ```rust
+//! ```ignore
+//! #![feature(proc_macro)]
+//!
+//! #[macro_use]
+//! extern crate serde_derive;
+//! extern crate canonical_json;
+//!
+//! use canonical_json::Value;
+//!
+//! #[derive(Debug, Serialize, Deserialize)]
+//! struct Point {
+//!     x: i64,
+//!     y: i64,
+//! }
+//!
+//! fn main() {
+//!     let point = Point { x: 1, y: 2 };
+//!
+//!     let point_string: String = canonical_json::to_string(&point).unwrap();
+//!     println!("{}", point_string);
+//!     // {"x":1,"y":2}
+//!
+//!     let point: Point = canonical_json::from_str(&point_string).unwrap();
+//!     println!("{:?}", point);
+//!     // Point { x: 1, y: 2 }
+//! }
+//! ```
+//!
+//! ## Parsing a `str` into a generic Canonical JSON `Value`
+//!
+//! ```
 //! extern crate canonical_json;
 //!
 //! use canonical_json::Value;
 //!
 //! fn main() {
-//!     let data: Value = canonical_json::from_str("{\"bar\":\"baz\",\"foo\":13}").unwrap();
-//!     println!("data: {:?}", data);
-//!     // data: {"bar":"baz","foo":13}
-//!     println!("object? {}", data.is_object());
+//!     let value: Value = canonical_json::from_str(r#"{"bar":"baz","foo":13}"#).unwrap();
+//!     println!("value: {:?}", value);
+//!     // value: {"bar":"baz","foo":13}
+//!     println!("object? {}", value.is_object());
 //!     // object? true
 //!
-//!     let obj = data.as_object().unwrap();
+//!     let obj = value.as_object().unwrap();
 //!     let foo = obj.get("foo").unwrap();
-//!
 //!     println!("array? {:?}", foo.as_array());
 //!     // array? None
 //!     println!("u64? {:?}", foo.as_u64());
@@ -107,6 +143,52 @@
 //!     }
 //!     // bar: baz (string)
 //!     // foo: 13 (u64)
+//! }
+//! ```
+//!
+//! ## Calculating a checksum of a regular JSON document
+//!
+//! ```ignore
+//! #![feature(try_from)]
+//!
+//! extern crate canonical_json;
+//! extern crate serde_json;
+//! extern crate ring;
+//!
+//! use std::convert::TryFrom;
+//!
+//! use canonical_json as cjson;
+//! use serde_json as json;
+//! use ring::digest;
+//!
+//! fn main() {
+//!     // Whitespace and the order of keys can be changed here
+//!     // while the checksum below will stay the same
+//!     let json_str: &'static str = r#"
+//!         {
+//!             "when you press": {
+//!                 "a": "parachute goes up",
+//!                 "b": "parachute turns green"
+//!             }
+//!         }
+//!     "#;
+//!
+//!     let value: json::Value = json::from_str(json_str).unwrap();
+//!     let canonical_value: cjson::Value = cjson::Value::try_from(value).unwrap();
+//!     let canonical_json_str: String = cjson::to_string(&canonical_value).unwrap();
+//!     let checksum = digest::digest(&digest::SHA256, canonical_json_str.as_bytes());
+//!     println!("{}", hex_from_bytes(checksum.as_ref()));
+//!     // 8b3199db606876d3ac0d9e678090c87e96ba4ba2c241e27e3e44e2bb102ce1
+//! }
+//!
+//! fn hex_from_bytes(bytes: &[u8]) -> String {
+//!     use std::fmt::Write;
+//!
+//!     let mut hex = String::new();
+//!     for &byte in bytes {
+//!         write!(&mut hex, "{:x}", byte).unwrap();
+//!     }
+//!     hex
 //! }
 //! ```
 
