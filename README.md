@@ -1,82 +1,127 @@
-Canonical JSON Serialization Library
-====================================
+# canonical_json
 
-This crate is a Rust library for parsing and generating the
-[JSON](http://json.org) (JavaScript Object Notation) file format. It is built
-upon [Serde](https://github.com/serde-rs/serde), a high performance generic
-serialization framework.
+Rust library for serializing and deserializing Canonical JSON.
 
-Installation
-============
+- [Documentation](https://vtllf.org/rustdoc/canonical_json/)
 
-This crate works with Cargo and can be found on
-[crates.io](https://crates.io/crates/canonical_json) with a `Cargo.toml` like:
+## What is Canonical JSON?
+
+Canonical JSON is a subset of JSON in which values each have a single,
+unambiguous serialized form. It provides meaningful and repeatable hashes
+of encoded data.
+
+Compared to JSON:
+
+- Whitespace between tokens is disallowed. Leading and trailing whitespace
+  is likewise disallowed.
+- Floating point numbers, exponents and "minus zero" are all disallowed.
+- Object keys must appear in lexiographical order and must not be repeated.
+- Strings are uninterpreted bytes, with the only escaped byte values being
+  backslash and quote. Escaping is mandatory for those two characters.
+- String contents are not guaranteed be parsable as UTF-8. Be aware that
+  encoded data may contain embedded control characters and nulls.
+
+Full grammar in [spec.txt](spec.txt).
+
+*Note:* This library deviates from the spec by additionally requiring that
+strings are, in fact, valid UTF-8. This is a convenience tradeoff so that
+users get to handle strings directly rather than converting back-and-forth
+between raw bytes.
+
+### Example
+
+This JSON value:
+
+```json
+{
+  "foo": "bar",
+  "abc": 9e3,
+  "snowman": "\u2603",
+  "zoo":
+    [
+      "zorilla",
+      "anteater"
+    ]
+}
+
+```
+
+becomes this in Canonical JSON:
+
+```json
+{"abc":9000,"foo":"bar","snowman":"☃","zoo":["zorilla","anteater"]}
+
+```
+
+## Usage
+
+Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-serde = "0.8"
-canonical_json = "0.8"
+canonical_json = { git = "https://github.com/vtduncan/canonical_json.git" }
+serde_derive = "0.8" # Optional, for deriving Serialize and Deserialise
+serde = "0.8"        # Optional, for deriving Serialize and Deserialise
+serde_json = "0.8"   # Optional, for converting to/from regular JSON
+
 ```
 
-Using Canonical JSON
-====================
-
-`canonical_json` is very simple to use out of the box:
+and this to your crate root:
 
 ```rust
-extern crate serde;
 extern crate canonical_json;
-
-use canonical_json::Map;
-
-fn main() {
-    let mut map = Map::new();
-    map.insert("x".to_string(), 1.0);
-    map.insert("y".to_string(), 2.0);
-
-    let s = canonical_json::to_string(&map).unwrap();
-    assert_eq!(s, "{\"x\":1.0,\"y\":2.0}");
-
-    let deserialized_map: Map<String, f64> = canonical_json::from_str(&s).unwrap();
-    assert_eq!(map, deserialized_map);
-}
 ```
 
-It also can be used with Serde's automatic serialization library,
-`serde_derive`. First add this to `Cargo.toml`:
-
-```toml
-[dependencies]
-...
-serde = "0.8"
-serde_derive = "0.8"
-...
-```
-
-Then run:
+or add this if you would also like to derive `Serialize` and `Deserialize`:
 
 ```rust
 #![feature(proc_macro)]
 
 #[macro_use]
 extern crate serde_derive;
-
-extern crate serde;
 extern crate canonical_json;
+```
+
+## Example
+
+```rust
+#![feature(proc_macro)]
+
+#[macro_use]
+extern crate serde_derive;
+extern crate canonical_json;
+
+use canonical_json::Value;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Point {
-    x: f64,
-    y: f64,
+    x: i64,
+    y: i64,
 }
 
 fn main() {
-    let point = Point { x: 1.0, y: 2.0 };
+    let point = Point { x: 1, y: 2 };
 
-    let s = canonical_json::to_string(&point).unwrap();
-    assert_eq!(s, "{\"x\":1.0,\"y\":2.0}");
+    // Serialize Point into a String
+    let point_string: String = canonical_json::to_string(&point).unwrap();
+    assert_eq!(point_string, r#"{"x":1,"y":2}"#);
 
-    let deserialized_point: Point = canonical_json::from_str(&s).unwrap();
-    assert_eq!(point, deserialized_point);
+    // Deserialize String back into a Point
+    let point: Point = canonical_json::from_str(&point_string).unwrap();
+    assert_eq!(point, Point { x: 1, y: 2 });
+
+    // Deserialize String into a generic JSON Value
+    let point_value: Value = canonical_json::from_str(&point_string).unwrap();
+    assert!(point_value.is_object());
+    assert_eq!(point_value.find("x").unwrap().as_i64().unwrap(), 1);
 }
+
 ```
+
+## Acknowledgements
+
+Thanks to Erick Tryzelaar, David Tolnay and other contributors to the excellent
+[serde_json] library. This library is a derivative of serde_json and shares much
+of its code.
+
+[serde_json]: https://github.com/serde-rs/json
