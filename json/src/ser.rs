@@ -12,41 +12,7 @@ use itoa;
 use dtoa;
 
 /// A structure for serializing Rust values into JSON.
-pub struct Serializer<W, F = CompactFormatter> {
-    writer: W,
-    formatter: F,
-}
-
-impl<W> Serializer<W>
-    where W: io::Write,
-{
-    /// Creates a new JSON serializer.
-    #[inline]
-    pub fn new(writer: W) -> Self {
-        Serializer::with_formatter(writer, CompactFormatter)
-    }
-}
-
-impl<W, F> Serializer<W, F>
-    where W: io::Write,
-          F: Formatter,
-{
-    /// Creates a new JSON visitor whose output will be written to the writer
-    /// specified.
-    #[inline]
-    pub fn with_formatter(writer: W, formatter: F) -> Self {
-        Serializer {
-            writer: writer,
-            formatter: formatter,
-        }
-    }
-
-    /// Unwrap the `Writer` from the `Serializer`.
-    #[inline]
-    pub fn into_inner(self) -> W {
-        self.writer
-    }
-}
+pub struct Serializer<W>(pub W);
 
 #[doc(hidden)]
 #[derive(Eq, PartialEq)]
@@ -63,9 +29,8 @@ pub struct MapState {
     cur_key: Option<String>,
 }
 
-impl<W, F> ser::Serializer for Serializer<W, F>
+impl<W> ser::Serializer for Serializer<W>
     where W: io::Write,
-          F: Formatter,
 {
     type Error = Error;
 
@@ -80,80 +45,80 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_bool(&mut self, value: bool) -> Result<()> {
         if value {
-            self.writer.write_all(b"true").map_err(From::from)
+            self.0.write_all(b"true").map_err(From::from)
         } else {
-            self.writer.write_all(b"false").map_err(From::from)
+            self.0.write_all(b"false").map_err(From::from)
         }
     }
 
     #[inline]
     fn serialize_isize(&mut self, value: isize) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i8(&mut self, value: i8) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i16(&mut self, value: i16) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i32(&mut self, value: i32) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i64(&mut self, value: i64) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_usize(&mut self, value: usize) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u8(&mut self, value: u8) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u16(&mut self, value: u16) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u32(&mut self, value: u32) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u64(&mut self, value: u64) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
+        itoa::write(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_f32(&mut self, value: f32) -> Result<()> {
-        fmt_f32_or_null(&mut self.writer, value).map_err(From::from)
+        fmt_f32_or_null(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<()> {
-        fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
+        fmt_f64_or_null(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_char(&mut self, value: char) -> Result<()> {
-        escape_char(&mut self.writer, value).map_err(From::from)
+        escape_char(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_str(&mut self, value: &str) -> Result<()> {
-        escape_str(&mut self.writer, value).map_err(From::from)
+        escape_str(&mut self.0, value).map_err(From::from)
     }
 
     #[inline]
@@ -167,7 +132,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_unit(&mut self) -> Result<()> {
-        self.writer.write_all(b"null").map_err(From::from)
+        self.0.write_all(b"null").map_err(From::from)
     }
 
     #[inline]
@@ -207,12 +172,11 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     ) -> Result<()>
         where T: ser::Serialize,
     {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
+        try!(self.0.write_all(b"{"));
         try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
+        try!(self.0.write_all(b":"));
         try!(value.serialize(self));
-        self.formatter.close(&mut self.writer, b'}')
+        self.0.write_all(b"}").map_err(From::from)
     }
 
     #[inline]
@@ -230,10 +194,10 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_seq(&mut self, len: Option<usize>) -> Result<State> {
         if len == Some(0) {
-            try!(self.writer.write_all(b"[]"));
+            try!(self.0.write_all(b"[]"));
             Ok(State::Empty)
         } else {
-            try!(self.formatter.open(&mut self.writer, b'['));
+            try!(self.0.write_all(b"["));
             Ok(State::First)
         }
     }
@@ -246,7 +210,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     ) -> Result<()>
         where T: ser::Serialize,
     {
-        try!(self.formatter.comma(&mut self.writer, *state == State::First));
+        if *state != State::First {
+            try!(self.0.write_all(b","));
+        }
         *state = State::Rest;
 
         value.serialize(self)
@@ -256,7 +222,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     fn serialize_seq_end(&mut self, state: State) -> Result<()> {
         match state {
             State::Empty => Ok(()),
-            _ => self.formatter.close(&mut self.writer, b']'),
+            _ => self.0.write_all(b"]").map_err(From::from),
         }
     }
 
@@ -315,10 +281,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         variant: &'static str,
         len: usize
     ) -> Result<State> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
+        try!(self.0.write_all(b"{"));
         try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
+        try!(self.0.write_all(b":"));
         self.serialize_seq(Some(len))
     }
 
@@ -334,16 +299,16 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_tuple_variant_end(&mut self, state: State) -> Result<()> {
         try!(self.serialize_seq_end(state));
-        self.formatter.close(&mut self.writer, b'}')
+        self.0.write_all(b"}").map_err(From::from)
     }
 
     #[inline]
     fn serialize_map(&mut self, len: Option<usize>) -> Result<MapState> {
         if len == Some(0) {
-            try!(self.writer.write_all(b"{}"));
+            try!(self.0.write_all(b"{}"));
             Ok(MapState { state: State::Empty, cur_key: None })
         } else {
-            try!(self.formatter.open(&mut self.writer, b'{'));
+            try!(self.0.write_all(b"{"));
             Ok(MapState { state: State::First, cur_key: None })
         }
     }
@@ -354,7 +319,10 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         state: &mut MapState,
         key: T,
     ) -> Result<()> {
-        try!(self.formatter.comma(&mut self.writer, state.state == State::First));
+        if state.state != State::First {
+            try!(self.0.write_all(b","));
+        }
+
         state.state = State::Rest;
         state.cur_key = {
             let mut key_serializer = AscendingKeySerializer {
@@ -365,7 +333,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
             key_serializer.cur_key.take()
         };
 
-        self.formatter.colon(&mut self.writer)
+        self.0.write_all(b":").map_err(From::from)
     }
 
     #[inline]
@@ -381,7 +349,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     fn serialize_map_end(&mut self, state: MapState) -> Result<()> {
         match state.state {
             State::Empty => Ok(()),
-            _ => self.formatter.close(&mut self.writer, b'}'),
+            _ => self.0.write_all(b"}").map_err(From::from),
         }
     }
 
@@ -418,10 +386,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         variant: &'static str,
         len: usize
     ) -> Result<MapState> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
+        try!(self.0.write_all(b"{"));
         try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
+        try!(self.0.write_all(b":"));
         self.serialize_map(Some(len))
     }
 
@@ -438,18 +405,17 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_struct_variant_end(&mut self, state: MapState) -> Result<()> {
         try!(self.serialize_struct_end(state));
-        self.formatter.close(&mut self.writer, b'}')
+        self.0.write_all(b"}").map_err(From::from)
     }
 }
 
-struct AscendingKeySerializer<'a, W: 'a, F: 'a> {
-    ser: &'a mut Serializer<W, F>,
+struct AscendingKeySerializer<'a, W: 'a> {
+    ser: &'a mut Serializer<W>,
     cur_key: Option<String>,
 }
 
-impl<'a, W, F> ser::Serializer for AscendingKeySerializer<'a, W, F>
+impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
     where W: io::Write,
-          F: Formatter,
 {
     type Error = Error;
 
@@ -735,59 +701,6 @@ impl<'a, W, F> ser::Serializer for AscendingKeySerializer<'a, W, F>
     }
 }
 
-/// This trait abstracts away serializing the JSON control characters, which allows the user to
-/// optionally pretty print the JSON output.
-pub trait Formatter {
-    /// Called when serializing a '{' or '['.
-    fn open<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
-        where W: io::Write;
-
-    /// Called when serializing a ','.
-    fn comma<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
-        where W: io::Write;
-
-    /// Called when serializing a ':'.
-    fn colon<W>(&mut self, writer: &mut W) -> Result<()> where W: io::Write;
-
-    /// Called when serializing a '}' or ']'.
-    fn close<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
-        where W: io::Write;
-}
-
-/// This structure compacts a JSON value with no extra whitespace.
-#[derive(Clone, Debug)]
-pub struct CompactFormatter;
-
-impl Formatter for CompactFormatter {
-    fn open<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
-        where W: io::Write,
-    {
-        writer.write_all(&[ch]).map_err(From::from)
-    }
-
-    fn comma<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
-        where W: io::Write,
-    {
-        if first {
-            Ok(())
-        } else {
-            writer.write_all(b",").map_err(From::from)
-        }
-    }
-
-    fn colon<W>(&mut self, writer: &mut W) -> Result<()>
-        where W: io::Write,
-    {
-        writer.write_all(b":").map_err(From::from)
-    }
-
-    fn close<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
-        where W: io::Write,
-    {
-        writer.write_all(&[ch]).map_err(From::from)
-    }
-}
-
 /// Serializes and escapes a `&str` into a JSON string.
 pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
     where W: io::Write,
@@ -886,7 +799,7 @@ pub fn to_writer<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
           T: ser::Serialize,
 {
-    let mut ser = Serializer::new(writer);
+    let mut ser = Serializer(writer);
     try!(value.serialize(&mut ser));
     Ok(())
 }

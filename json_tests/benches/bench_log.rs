@@ -941,10 +941,10 @@ fn bench_serializer(b: &mut Bencher) {
 fn test_serializer_vec() {
     let log = Log::new();
     let wr = Vec::with_capacity(1024);
-    let mut serializer = canonical_json::Serializer::new(wr);
+    let mut serializer = canonical_json::Serializer(wr);
     log.serialize(&mut serializer).unwrap();
 
-    let json = serializer.into_inner();
+    let json = serializer.0;
     assert_eq!(&json, &JSON_STR.as_bytes());
 }
 
@@ -959,9 +959,9 @@ fn bench_serializer_vec(b: &mut Bencher) {
     b.iter(|| {
         wr.clear();
 
-        let mut serializer = canonical_json::Serializer::new(wr.by_ref());
+        let mut serializer = canonical_json::Serializer(wr.by_ref());
         log.serialize(&mut serializer).unwrap();
-        let json = serializer.into_inner();
+        let json = serializer.0;
         black_box(json);
     });
 }
@@ -980,9 +980,9 @@ fn bench_serializer_slice(b: &mut Bencher) {
         }
         let mut wr = &mut buf[..];
 
-        let mut serializer = canonical_json::Serializer::new(wr.by_ref());
+        let mut serializer = canonical_json::Serializer(wr.by_ref());
         log.serialize(&mut serializer).unwrap();
-        let json = serializer.into_inner();
+        let json = serializer.0;
         black_box(json);
     });
 }
@@ -994,9 +994,9 @@ fn test_serializer_my_mem_writer0() {
     let mut wr = MyMemWriter0::with_capacity(1024);
 
     {
-        let mut serializer = canonical_json::Serializer::new(wr.by_ref());
+        let mut serializer = canonical_json::Serializer(wr.by_ref());
         log.serialize(&mut serializer).unwrap();
-        let json = serializer.into_inner();
+        let json = serializer.0;
         black_box(json);
     }
 
@@ -1014,9 +1014,9 @@ fn bench_serializer_my_mem_writer0(b: &mut Bencher) {
     b.iter(|| {
         wr.buf.clear();
 
-        let mut serializer = canonical_json::Serializer::new(wr.by_ref());
+        let mut serializer = canonical_json::Serializer(wr.by_ref());
         log.serialize(&mut serializer).unwrap();
-        let json = serializer.into_inner();
+        let json = serializer.0;
         black_box(json);
     });
 }
@@ -1028,9 +1028,9 @@ fn test_serializer_my_mem_writer1() {
     let mut wr = MyMemWriter1::with_capacity(1024);
 
     {
-        let mut serializer = canonical_json::Serializer::new(wr.by_ref());
+        let mut serializer = canonical_json::Serializer(wr.by_ref());
         log.serialize(&mut serializer).unwrap();
-        let json = serializer.into_inner();
+        let json = serializer.0;
         black_box(json);
     }
 
@@ -1048,9 +1048,9 @@ fn bench_serializer_my_mem_writer1(b: &mut Bencher) {
     b.iter(|| {
         wr.buf.clear();
 
-        let mut serializer = canonical_json::Serializer::new(wr.by_ref());
+        let mut serializer = canonical_json::Serializer(wr.by_ref());
         log.serialize(&mut serializer).unwrap();
-        let json = serializer.into_inner();
+        let json = serializer.0;
         black_box(json);
     });
 }
