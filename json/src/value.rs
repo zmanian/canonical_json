@@ -1188,20 +1188,6 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
     de::Deserialize::deserialize(&mut de)
 }
 
-/// A trait for converting values to JSON
-pub trait ToJson {
-    /// Converts the value of `self` to an instance of JSON
-    fn to_json(&self) -> Value;
-}
-
-impl<T: ?Sized> ToJson for T
-    where T: ser::Serialize,
-{
-    fn to_json(&self) -> Value {
-        to_value(&self)
-    }
-}
-
 impl TryFrom<serde_json::Value> for Value {
     type Err = ErrorCode;
 
