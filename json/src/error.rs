@@ -10,16 +10,16 @@ use serde::ser;
 /// Syntax and parsing errors.
 #[derive(Clone, PartialEq, Debug)]
 pub enum SyntaxError {
-    /// Catchall for syntax error messages
+    /// Catchall for syntax error messages.
     Custom(String),
 
-    /// Incorrect type from value
+    /// Incorrect type from value.
     InvalidType(de::Type),
 
-    /// Incorrect value
+    /// Incorrect value.
     InvalidValue(String),
 
-    /// Invalid length
+    /// Invalid length.
     InvalidLength(usize),
 
     /// Unknown variant in an enum.
