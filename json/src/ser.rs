@@ -6,7 +6,7 @@ use std::io;
 use std::num::FpCategory;
 
 use serde::ser;
-use super::error::{Error, ErrorCode};
+use super::error::{Error, SyntaxError};
 
 use itoa;
 use dtoa;
@@ -423,10 +423,10 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
     fn serialize_str(&mut self, value: &str) -> Result<(), Error> {
         match self.cur_key {
             Some(ref cur_key) if value == cur_key => {
-                Err(Error::Syntax(ErrorCode::RepeatedKey, 0, 0))
+                Err(Error::Syntax(SyntaxError::RepeatedKey, 0, 0))
             }
             Some(ref cur_key) if value < cur_key => {
-                Err(Error::Syntax(ErrorCode::UnsortedKey, 0, 0))
+                Err(Error::Syntax(SyntaxError::UnsortedKey, 0, 0))
             }
             _ => {
                 self.cur_key = Some(value.to_string());
@@ -444,71 +444,71 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
     type StructVariantState = ();
 
     fn serialize_bool(&mut self, _value: bool) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_isize(&mut self, _value: isize) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_i8(&mut self, _value: i8) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_i16(&mut self, _value: i16) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_i32(&mut self, _value: i32) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_i64(&mut self, _value: i64) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_usize(&mut self, _value: usize) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_u8(&mut self, _value: u8) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_u16(&mut self, _value: u16) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_u32(&mut self, _value: u32) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_u64(&mut self, _value: u64) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_f32(&mut self, _value: f32) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_f64(&mut self, _value: f64) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_char(&mut self, _value: char) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_bytes(&mut self, _value: &[u8]) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_unit(&mut self) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_unit_struct(&mut self, _name: &'static str) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_unit_variant(
@@ -517,7 +517,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _variant_index: usize,
         _variant: &'static str
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_newtype_struct<T>(
@@ -527,7 +527,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
     ) -> Result<(), Error>
         where T: ser::Serialize,
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_newtype_variant<T>(
@@ -539,21 +539,21 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
     ) -> Result<(), Error>
         where T: ser::Serialize,
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_none(&mut self) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_some<T>(&mut self, _value: T) -> Result<(), Error>
         where T: ser::Serialize,
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_seq(&mut self, _len: Option<usize>) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_seq_elt<T: ser::Serialize>(
@@ -563,19 +563,19 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
     ) -> Result<(), Error>
         where T: ser::Serialize,
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_seq_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_seq_fixed_size(&mut self, _size: usize) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple(&mut self, _len: usize) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_elt<T: ser::Serialize>(
@@ -583,11 +583,11 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _state: &mut (),
         _value: T
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_struct(
@@ -595,7 +595,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _name: &'static str,
         _len: usize
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_struct_elt<T: ser::Serialize>(
@@ -603,11 +603,11 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _state: &mut (),
         _value: T
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_struct_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_variant(
@@ -617,7 +617,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _variant: &'static str,
         _len: usize
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_variant_elt<T: ser::Serialize>(
@@ -625,15 +625,15 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _state: &mut (),
         _value: T
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_tuple_variant_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_map(&mut self, _len: Option<usize>) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_map_key<T: ser::Serialize>(
@@ -641,7 +641,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _state: &mut (),
         _key: T,
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_map_value<T: ser::Serialize>(
@@ -649,11 +649,11 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _state: &mut (),
         _value: T,
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_map_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_struct(
@@ -661,7 +661,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _name: &'static str,
         _len: usize
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_struct_elt<V: ser::Serialize>(
@@ -670,11 +670,11 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _key: &'static str,
         _value: V
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_struct_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_struct_variant(
@@ -684,7 +684,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _variant: &'static str,
         _len: usize
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_struct_variant_elt<V: ser::Serialize>(
@@ -693,11 +693,11 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
         _key: &'static str,
         _value: V
     ) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_struct_variant_end(&mut self, _state: ()) -> Result<(), Error> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0))
     }
 }
 

@@ -14,7 +14,7 @@ use serde::de;
 use serde::ser;
 use serde_json;
 
-use error::{Error, ErrorCode};
+use error::{Error, SyntaxError};
 
 /// Represents the `IntoIter` type.
 type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
@@ -672,7 +672,7 @@ impl ser::Serializer for Serializer {
     ) -> Result<(), Error> {
         match to_value(&key) {
             Value::String(s) => state.next_key = Some(s),
-            _ => return Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0)),
+            _ => return Err(Error::Syntax(SyntaxError::KeyMustBeAString, 0, 0)),
         };
         Ok(())
     }
@@ -685,7 +685,7 @@ impl ser::Serializer for Serializer {
         match state.next_key.take() {
             Some(key) => state.map.insert(key, to_value(&value)),
             None => {
-                return Err(Error::Syntax(ErrorCode::Custom("serialize_map_value without \
+                return Err(Error::Syntax(SyntaxError::Custom("serialize_map_value without \
                                                             matching serialize_map_key".to_owned()),
                                          0, 0));
             }
@@ -1143,15 +1143,15 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
 }
 
 impl TryFrom<serde_json::Value> for Value {
-    type Err = ErrorCode;
+    type Err = SyntaxError;
 
-    fn try_from(value: serde_json::Value) -> Result<Value, ErrorCode> {
+    fn try_from(value: serde_json::Value) -> Result<Value, SyntaxError> {
         match value {
             serde_json::Value::Null => Ok(Value::Null),
             serde_json::Value::Bool(b) => Ok(Value::Bool(b)),
             serde_json::Value::I64(i) => Ok(Value::I64(i)),
             serde_json::Value::U64(u) => Ok(Value::U64(u)),
-            serde_json::Value::F64(_) => Err(ErrorCode::InvalidNumber),
+            serde_json::Value::F64(_) => Err(SyntaxError::InvalidNumber),
             serde_json::Value::String(s) => Ok(Value::String(s)),
             serde_json::Value::Array(a) => Ok(Value::Array(try!(
                 a.into_iter().map(TryFrom::try_from).collect()

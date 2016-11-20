@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use serde::de;
 
-use super::error::{Error, ErrorCode};
+use super::error::{Error, SyntaxError};
 
 use read::{self, Read};
 
@@ -115,7 +115,7 @@ impl<R: Read> DeserializerImpl<R> {
         if try!(self.eof()) {
             Ok(())
         } else {
-            Err(self.peek_error(ErrorCode::TrailingCharacters))
+            Err(self.peek_error(SyntaxError::TrailingCharacters))
         }
     }
 
@@ -144,13 +144,13 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     /// Error caused by a byte from next_char().
-    fn error(&mut self, reason: ErrorCode) -> Error {
+    fn error(&mut self, reason: SyntaxError) -> Error {
         let pos = self.read.position();
         Error::Syntax(reason, pos.line, pos.column)
     }
 
     /// Error caused by a byte from peek().
-    fn peek_error(&mut self, reason: ErrorCode) -> Error {
+    fn peek_error(&mut self, reason: SyntaxError) -> Error {
         let pos = self.read.peek_position();
         Error::Syntax(reason, pos.line, pos.column)
     }
@@ -158,7 +158,7 @@ impl<R: Read> DeserializerImpl<R> {
     fn reject_whitespace(&mut self) -> Result<(), Error> {
         match try!(self.peek_or_null()) {
             b' ' | b'\n' | b'\t' | b'\r' => {
-                Err(self.peek_error(ErrorCode::UnexpectedWhitespace))
+                Err(self.peek_error(SyntaxError::UnexpectedWhitespace))
             }
             _ => {
                 Ok(())
@@ -172,7 +172,7 @@ impl<R: Read> DeserializerImpl<R> {
         try!(self.reject_whitespace());
 
         if try!(self.eof()) {
-            return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
+            return Err(self.peek_error(SyntaxError::EOFWhileParsingValue));
         }
 
         let value = match try!(self.peek_or_null()) {
@@ -210,7 +210,7 @@ impl<R: Read> DeserializerImpl<R> {
                 self.eat_char();
                 visitor.visit_map(MapVisitor::new(self))
             }
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            _ => Err(self.peek_error(SyntaxError::ExpectedSomeValue)),
         };
 
         match value {
@@ -229,7 +229,7 @@ impl<R: Read> DeserializerImpl<R> {
     fn parse_ident(&mut self, ident: &[u8]) -> Result<(), Error> {
         for c in ident {
             if Some(*c) != try!(self.next_char()) {
-                return Err(self.error(ErrorCode::ExpectedSomeIdent));
+                return Err(self.error(SyntaxError::ExpectedSomeIdent));
             }
         }
 
@@ -245,13 +245,13 @@ impl<R: Read> DeserializerImpl<R> {
                     // There can be only one leading '0'.
                     match try!(self.peek_or_null()) {
                         b'0'...b'9' => {
-                            Err(self.peek_error(ErrorCode::InvalidNumber))
+                            Err(self.peek_error(SyntaxError::InvalidNumber))
                         }
                         _ => self.parse_number(pos, 0, visitor),
                     }
                 } else {
                     // Negative zero is not allowed
-                    Err(self.peek_error(ErrorCode::InvalidNumber))
+                    Err(self.peek_error(SyntaxError::InvalidNumber))
                 }
             }
             c @ b'1'...b'9' => {
@@ -264,7 +264,7 @@ impl<R: Read> DeserializerImpl<R> {
                             let digit = (c - b'0') as u64;
 
                             if overflow!(res * 10 + digit, u64::MAX) {
-                                return Err(self.error(ErrorCode::NumberOutOfRange));
+                                return Err(self.error(SyntaxError::NumberOutOfRange));
                             }
 
                             res = res * 10 + digit;
@@ -275,7 +275,7 @@ impl<R: Read> DeserializerImpl<R> {
                     }
                 }
             }
-            _ => Err(self.error(ErrorCode::InvalidNumber)),
+            _ => Err(self.error(SyntaxError::InvalidNumber)),
         }
     }
 
@@ -294,7 +294,7 @@ impl<R: Read> DeserializerImpl<R> {
 
             // Return an error if we underflow.
             if neg > 0 {
-                return Err(self.error(ErrorCode::NumberOutOfRange));
+                return Err(self.error(SyntaxError::NumberOutOfRange));
             } else {
                 visitor.visit_i64(neg)
             }
@@ -309,8 +309,8 @@ impl<R: Read> DeserializerImpl<R> {
                 self.eat_char();
                 Ok(())
             }
-            Some(_) => Err(self.peek_error(ErrorCode::ExpectedColon)),
-            None => Err(self.peek_error(ErrorCode::EOFWhileParsingObject)),
+            Some(_) => Err(self.peek_error(SyntaxError::ExpectedColon)),
+            None => Err(self.peek_error(SyntaxError::EOFWhileParsingObject)),
         }
     }
 }
@@ -380,11 +380,11 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
 
                 match try!(self.next_char_or_null()) {
                     b'}' => Ok(value),
-                    _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
+                    _ => Err(self.error(SyntaxError::ExpectedSomeValue)),
                 }
             }
             b'"' => visitor.visit(KeyOnlyVariantVisitor::new(self)),
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            _ => Err(self.peek_error(SyntaxError::ExpectedSomeValue)),
         }
     }
 
@@ -407,7 +407,7 @@ impl<'a, R: Read> AscendingKeyDeserializer<'a, R> {
         try!(self.de.reject_whitespace());
 
         if try!(self.de.eof()) {
-            return Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue));
+            return Err(self.de.peek_error(SyntaxError::EOFWhileParsingValue));
         }
 
         let value = match try!(self.de.peek_or_null()) {
@@ -417,10 +417,10 @@ impl<'a, R: Read> AscendingKeyDeserializer<'a, R> {
                 let s = try!(self.de.read.parse_str(&mut self.de.str_buf)).to_string();
                 match self.cur_key {
                     Some(ref cur_key) if &s == cur_key => {
-                        Err(self.de.error(ErrorCode::RepeatedKey))
+                        Err(self.de.error(SyntaxError::RepeatedKey))
                     }
                     Some(ref cur_key) if &s < cur_key => {
-                        Err(self.de.error(ErrorCode::UnsortedKey))
+                        Err(self.de.error(SyntaxError::UnsortedKey))
                     }
                     _ => {
                         self.cur_key = Some(s.clone());
@@ -428,7 +428,7 @@ impl<'a, R: Read> AscendingKeyDeserializer<'a, R> {
                     }
                 }
             }
-            _ => Err(self.de.peek_error(ErrorCode::ExpectedSomeValue)),
+            _ => Err(self.de.peek_error(SyntaxError::ExpectedSomeValue)),
         };
 
         match value {
@@ -496,11 +496,11 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
                     self.first = false;
                 } else {
                     return Err(self.de
-                        .peek_error(ErrorCode::ExpectedListCommaOrEnd));
+                        .peek_error(SyntaxError::ExpectedListCommaOrEnd));
                 }
             }
             None => {
-                return Err(self.de.peek_error(ErrorCode::EOFWhileParsingList));
+                return Err(self.de.peek_error(SyntaxError::EOFWhileParsingList));
             }
         }
 
@@ -513,8 +513,8 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
 
         match try!(self.de.next_char()) {
             Some(b']') => Ok(()),
-            Some(_) => Err(self.de.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.de.error(ErrorCode::EOFWhileParsingList)),
+            Some(_) => Err(self.de.error(SyntaxError::TrailingCharacters)),
+            None => Err(self.de.error(SyntaxError::EOFWhileParsingList)),
         }
     }
 }
@@ -556,12 +556,12 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
                     self.first = false;
                 } else {
                     return Err(self.de
-                        .peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+                        .peek_error(SyntaxError::ExpectedObjectCommaOrEnd));
                 }
             }
             None => {
                 return Err(self.de
-                    .peek_error(ErrorCode::EOFWhileParsingObject));
+                    .peek_error(SyntaxError::EOFWhileParsingObject));
             }
         }
 
@@ -575,8 +575,8 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
                 self.cur_key = ordered_de.cur_key;
                 Ok(Some(key))
             }
-            Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
-            None => Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue)),
+            Some(_) => Err(self.de.peek_error(SyntaxError::KeyMustBeAString)),
+            None => Err(self.de.peek_error(SyntaxError::EOFWhileParsingValue)),
         }
     }
 
@@ -593,8 +593,8 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
 
         match try!(self.de.next_char()) {
             Some(b'}') => Ok(()),
-            Some(_) => Err(self.de.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.de.error(ErrorCode::EOFWhileParsingObject)),
+            Some(_) => Err(self.de.error(SyntaxError::TrailingCharacters)),
+            None => Err(self.de.error(SyntaxError::EOFWhileParsingObject)),
         }
     }
 

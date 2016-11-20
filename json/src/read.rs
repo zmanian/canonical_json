@@ -2,7 +2,7 @@ use std::{cmp, io, str};
 
 use serde::iter::LineColIterator;
 
-use super::error::{Error, ErrorCode};
+use super::error::{Error, SyntaxError};
 
 /// Trait used by the deserializer for iterating over input. This is manually
 /// "specialized" for iterating over &[u8]. Once feature(specialization) is
@@ -141,7 +141,7 @@ impl<Iter> Read for IteratorRead<Iter>
             let ch = match try!(self.next().map_err(Error::Io)) {
                 Some(ch) => ch,
                 None => {
-                    return error(self, ErrorCode::EOFWhileParsingString);
+                    return error(self, SyntaxError::EOFWhileParsingString);
                 }
             };
             if !ESCAPE[ch as usize] {
@@ -156,7 +156,7 @@ impl<Iter> Read for IteratorRead<Iter>
                     try!(parse_escape(self, scratch));
                 }
                 _ => {
-                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                    return error(self, SyntaxError::InvalidUnicodeCodePoint);
                 }
             }
         }
@@ -212,7 +212,7 @@ impl<'a> SliceRead<'a> {
                 self.index += 1;
             }
             if self.index == self.slice.len() {
-                return error(self, ErrorCode::EOFWhileParsingString);
+                return error(self, SyntaxError::EOFWhileParsingString);
             }
             match self.slice[self.index] {
                 b'"' => {
@@ -235,7 +235,7 @@ impl<'a> SliceRead<'a> {
                     start = self.index;
                 }
                 _ => {
-                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                    return error(self, SyntaxError::InvalidUnicodeCodePoint);
                 }
             }
         }
@@ -365,14 +365,14 @@ static ESCAPE: [bool; 256] = [
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // F
 ];
 
-fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T, Error> {
+fn error<R: Read, T>(read: &R, reason: SyntaxError) -> Result<T, Error> {
     let pos = read.position();
     Err(Error::Syntax(reason, pos.line, pos.column))
 }
 
 fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str, Error> {
     str::from_utf8(slice)
-        .or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
+        .or_else(|_| error(read, SyntaxError::InvalidUnicodeCodePoint))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
@@ -381,7 +381,7 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<(), Erro
     let ch = match try!(read.next().map_err(Error::Io)) {
         Some(ch) => ch,
         None => {
-            return error(read, ErrorCode::EOFWhileParsingString);
+            return error(read, SyntaxError::EOFWhileParsingString);
         }
     };
 
@@ -389,7 +389,7 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<(), Erro
         b'"' => scratch.push(b'"'),
         b'\\' => scratch.push(b'\\'),
         _ => {
-            return error(read, ErrorCode::InvalidEscape);
+            return error(read, SyntaxError::InvalidEscape);
         }
     }
 

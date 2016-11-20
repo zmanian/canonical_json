@@ -227,7 +227,7 @@ extern crate dtoa;
 
 pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
                    from_slice, from_str};
-pub use self::error::{Error, ErrorCode};
+pub use self::error::{Error, SyntaxError};
 pub use self::ser::{Serializer, escape_str, to_string, to_vec, to_writer};
 pub use self::value::{Value, from_value, to_value};
 
