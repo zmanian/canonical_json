@@ -48,10 +48,9 @@
 //! # Type-based Serialization and Deserialization
 //!
 //! Structs and enums can be serialized and deserialized to/from Canonical JSON
-//! without writing boilerplate code. To be able to serialize and deserialize
-//! a piece of data, it must implement the [`Serialize`] and [`Deserialize`] traits.
-//! Serde provides provides an annotation to automatically derive
-//! these traits: `#[derive(Serialize, Deserialize)]`.
+//! without writing boilerplate code. To do this, it must implement the
+//! [`Serialize`] and [`Deserialize`] traits. Serde provides provides an
+//! annotation to automatically derive these traits.
 //!
 //! To derive [`Serialize`] and [`Deserialize`], add this to your crate root:
 //!
@@ -76,6 +75,9 @@
 //!
 //! ```
 //!
+//! *Note:* Struct fields must be defined in lexiographical order when deriving
+//! [`Serialize`].
+//!
 //! To customize how a data structure is serialized, for example by renaming
 //! fields, see the [Serde documentation on attributes].
 //!
@@ -91,8 +93,6 @@
 //! #[macro_use]
 //! extern crate serde_derive;
 //! extern crate canonical_json;
-//!
-//! use canonical_json::Value;
 //!
 //! #[derive(Debug, Serialize, Deserialize)]
 //! struct Point {

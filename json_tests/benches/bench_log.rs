@@ -14,15 +14,15 @@ use rustc_serialize::Encodable;
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable, Serialize, Deserialize)]
 struct Http {
-    protocol: HttpProtocol,
-    status: u32,
-    host_status: u32,
-    up_status: u32,
-    method: HttpMethod,
     content_type: String,
-    user_agent: String,
+    host_status: u32,
+    method: HttpMethod,
+    protocol: HttpProtocol,
     referer: String,
     request_uri: String,
+    status: u32,
+    up_status: u32,
+    user_agent: String,
 }
 
 #[allow(non_camel_case_types)]
@@ -247,9 +247,9 @@ impl de::Deserialize for CacheStatus {
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable, Serialize, Deserialize)]
 struct Origin {
+    hostname: String,
     ip: String,
     port: u32,
-    hostname: String,
     protocol: OriginProtocol,
 }
 
@@ -726,18 +726,18 @@ impl de::Deserialize for Country {
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable, Serialize, Deserialize)]
 struct Log {
+    bytes_dlv: u64,
+    cache_status: CacheStatus,
+    country: Country,
+    http: Http,
+    origin: Origin,
+    ray_id: String,
+    remote_ip: String,
+    server_ip: String,
+    server_name: String,
     timestamp: i64,
     zone_id: u32,
     zone_plan: ZonePlan,
-    http: Http,
-    origin: Origin,
-    country: Country,
-    cache_status: CacheStatus,
-    server_ip: String,
-    server_name: String,
-    remote_ip: String,
-    bytes_dlv: u64,
-    ray_id: String,
 }
 
 impl Log {

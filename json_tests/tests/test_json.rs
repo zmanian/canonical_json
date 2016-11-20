@@ -72,6 +72,17 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
     }
 }
 
+fn test_encode_err<T>(errors: &[(T, ErrorCode)])
+    where T: PartialEq + Debug + ser::Serialize,
+{
+    for &(ref value, ref code) in errors {
+        match canonical_json::to_string(value).unwrap_err() {
+            Error::Syntax(ref c, _, _) => assert_eq!(c, code),
+            _ => panic!("unexpected IO error"),
+        }
+    }
+}
+
 #[test]
 fn test_write_null() {
     let tests = &[
@@ -321,6 +332,23 @@ fn test_write_newtype_struct() {
 
     test_encode_ok(&[
         (outer, r#"{"outer":{"inner":123}}"#),
+    ]);
+}
+
+#[test]
+fn test_write_unsorted_struct() {
+    #[derive(Serialize, PartialEq, Debug)]
+    struct UnsortedStruct { z: i64, a: i64 };
+
+    #[derive(Serialize, PartialEq, Debug)]
+    enum UnsortedEnum { Boo { z: i64, a: i64 } };
+
+    test_encode_err(&[
+        (UnsortedStruct { z: 1, a: 2 }, ErrorCode::UnsortedKey),
+    ]);
+
+    test_encode_err(&[
+        (UnsortedEnum::Boo { z: 1, a: 2 }, ErrorCode::UnsortedKey),
     ]);
 }
 

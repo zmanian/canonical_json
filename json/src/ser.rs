@@ -56,6 +56,13 @@ pub enum State {
     Rest,
 }
 
+#[doc(hidden)]
+#[derive(Eq, PartialEq)]
+pub struct MapState {
+    state: State,
+    cur_key: Option<String>,
+}
+
 impl<W, F> ser::Serializer for Serializer<W, F>
     where W: io::Write,
           F: Formatter,
@@ -66,9 +73,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     type TupleState = State;
     type TupleStructState = State;
     type TupleVariantState = State;
-    type MapState = State;
-    type StructState = State;
-    type StructVariantState = State;
+    type MapState = MapState;
+    type StructState = MapState;
+    type StructVariantState = MapState;
 
     #[inline]
     fn serialize_bool(&mut self, value: bool) -> Result<()> {
@@ -331,28 +338,32 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_map(&mut self, len: Option<usize>) -> Result<State> {
+    fn serialize_map(&mut self, len: Option<usize>) -> Result<MapState> {
         if len == Some(0) {
             try!(self.writer.write_all(b"{}"));
-            Ok(State::Empty)
+            Ok(MapState { state: State::Empty, cur_key: None })
         } else {
             try!(self.formatter.open(&mut self.writer, b'{'));
-            Ok(State::First)
+            Ok(MapState { state: State::First, cur_key: None })
         }
     }
 
     #[inline]
     fn serialize_map_key<T: ser::Serialize>(
         &mut self,
-        state: &mut State,
+        state: &mut MapState,
         key: T,
     ) -> Result<()> {
-        try!(self.formatter.comma(&mut self.writer, *state == State::First));
-        *state = State::Rest;
-
-        try!(key.serialize(&mut MapKeySerializer {
-            ser: self,
-        }));
+        try!(self.formatter.comma(&mut self.writer, state.state == State::First));
+        state.state = State::Rest;
+        state.cur_key = {
+            let mut key_serializer = AscendingKeySerializer {
+                ser: self,
+                cur_key: state.cur_key.take(),
+            };
+            try!(key.serialize(&mut key_serializer));
+            key_serializer.cur_key.take()
+        };
 
         self.formatter.colon(&mut self.writer)
     }
@@ -360,15 +371,15 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_map_value<T: ser::Serialize>(
         &mut self,
-        _: &mut State,
+        _: &mut MapState,
         value: T,
     ) -> Result<()> {
         value.serialize(self)
     }
 
     #[inline]
-    fn serialize_map_end(&mut self, state: State) -> Result<()> {
-        match state {
+    fn serialize_map_end(&mut self, state: MapState) -> Result<()> {
+        match state.state {
             State::Empty => Ok(()),
             _ => self.formatter.close(&mut self.writer, b'}'),
         }
@@ -379,14 +390,14 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         &mut self,
         _name: &'static str,
         len: usize
-    ) -> Result<State> {
+    ) -> Result<MapState> {
         self.serialize_map(Some(len))
     }
 
     #[inline]
     fn serialize_struct_elt<V: ser::Serialize>(
         &mut self,
-        state: &mut State,
+        state: &mut MapState,
         key: &'static str,
         value: V
     ) -> Result<()> {
@@ -395,7 +406,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_struct_end(&mut self, state: State) -> Result<()> {
+    fn serialize_struct_end(&mut self, state: MapState) -> Result<()> {
         self.serialize_map_end(state)
     }
 
@@ -406,7 +417,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         _variant_index: usize,
         variant: &'static str,
         len: usize
-    ) -> Result<State> {
+    ) -> Result<MapState> {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
         try!(self.serialize_str(variant));
@@ -417,7 +428,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_struct_variant_elt<V: ser::Serialize>(
         &mut self,
-        state: &mut State,
+        state: &mut MapState,
         key: &'static str,
         value: V
     ) -> Result<()> {
@@ -425,17 +436,18 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_struct_variant_end(&mut self, state: State) -> Result<()> {
+    fn serialize_struct_variant_end(&mut self, state: MapState) -> Result<()> {
         try!(self.serialize_struct_end(state));
         self.formatter.close(&mut self.writer, b'}')
     }
 }
 
-struct MapKeySerializer<'a, W: 'a, F: 'a> {
+struct AscendingKeySerializer<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
+    cur_key: Option<String>,
 }
 
-impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
+impl<'a, W, F> ser::Serializer for AscendingKeySerializer<'a, W, F>
     where W: io::Write,
           F: Formatter,
 {
@@ -443,7 +455,18 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 
     #[inline]
     fn serialize_str(&mut self, value: &str) -> Result<()> {
-        self.ser.serialize_str(value)
+        match self.cur_key {
+            Some(ref cur_key) if value == cur_key => {
+                Err(Error::Syntax(ErrorCode::RepeatedKey, 0, 0))
+            }
+            Some(ref cur_key) if value < cur_key => {
+                Err(Error::Syntax(ErrorCode::UnsortedKey, 0, 0))
+            }
+            _ => {
+                self.cur_key = Some(value.to_string());
+                self.ser.serialize_str(value)
+            }
+        }
     }
 
     type SeqState = ();
