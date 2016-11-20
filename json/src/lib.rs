@@ -217,8 +217,6 @@
     missing_docs_in_private_items,
 ))]
 
-#![deny(missing_docs)]
-
 extern crate num_traits;
 extern crate core;
 #[macro_use]

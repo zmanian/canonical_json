@@ -1,37 +1,4 @@
-//! JSON Value
-//!
-//! This module is centered around the `Value` type, which can represent all possible JSON values.
-//!
-//! # Example of use:
-//!
-//! ```rust
-//! extern crate canonical_json;
-//!
-//! use canonical_json::Value;
-//!
-//! fn main() {
-//!     let s = "{\"x\":1,\"y\":2}";
-//!     let value: Value = canonical_json::from_str(s).unwrap();
-//! }
-//! ```
-//!
-//! It is also possible to deserialize from a `Value` type:
-//!
-//! ```rust
-//! extern crate canonical_json;
-//!
-//! use std::collections::BTreeMap;
-//! use canonical_json::Value;
-//!
-//! fn main() {
-//!     let mut map = BTreeMap::new();
-//!     map.insert(String::from("x"), Value::U64(1));
-//!     map.insert(String::from("y"), Value::U64(2));
-//!     let value = Value::Object(map);
-//!
-//!     let map: BTreeMap<String, u64> = canonical_json::from_value(value).unwrap();
-//! }
-//! ```
+//! A type representing a JSON value.
 
 use std::collections::{BTreeMap, btree_map};
 
@@ -50,38 +17,25 @@ use serde_json;
 use error::{Error, ErrorCode};
 
 /// Represents the `IntoIter` type.
-pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
+type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
 
 type MapVisitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
 
-/// Represents a JSON value
+/// Represents a JSON value.
 #[derive(Clone, PartialEq)]
 pub enum Value {
-    /// Represents a JSON null value
     Null,
-
-    /// Represents a JSON Boolean
     Bool(bool),
-
-    /// Represents a JSON signed integer
     I64(i64),
-
-    /// Represents a JSON unsigned integer
     U64(u64),
-
-    /// Represents a JSON string
     String(String),
-
-    /// Represents a JSON array
     Array(Vec<Value>),
-
-    /// Represents a JSON object
     Object(BTreeMap<String, Value>),
 }
 
 impl Value {
-    /// If the `Value` is an Object, returns the value associated with the provided key.
-    /// Otherwise, returns None.
+    /// If the value is an `Object`, returns the value associated with the provided key.
+    /// Otherwise, returns `None`.
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Value> {
         match *self {
             Value::Object(ref map) => map.get(key),
@@ -89,8 +43,8 @@ impl Value {
         }
     }
 
-    /// Attempts to get a nested Value Object for each key in `keys`.
-    /// If any key is found not to exist, find_path will return None.
+    /// Attempts to get a nested `Object` for each key in `keys`.
+    /// If any key is found not to exist, find_path will return `None`.
     /// Otherwise, it will return the `Value` associated with the final key.
     pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Value> {
         let mut target = self;
@@ -105,13 +59,13 @@ impl Value {
         Some(target)
     }
 
-    /// Returns true if the `Value` is an Object. Returns false otherwise.
+    /// Returns `true` if the value is an `Object`.
     pub fn is_object(&self) -> bool {
         self.as_object().is_some()
     }
 
-    /// If the `Value` is an Object, returns the associated Map.
-    /// Returns None otherwise.
+    /// If the value is an `Object`, returns the associated `BTreeMap`.
+    /// Returns `None` otherwise.
     pub fn as_object(&self) -> Option<&BTreeMap<String, Value>> {
         match *self {
             Value::Object(ref map) => Some(map),
@@ -119,8 +73,8 @@ impl Value {
         }
     }
 
-    /// If the `Value` is an Object, returns the associated mutable Map.
-    /// Returns None otherwise.
+    /// If the value is an `Object`, returns the associated mutable `BTreeMap`.
+    /// Returns `None` otherwise.
     pub fn as_object_mut(&mut self) -> Option<&mut BTreeMap<String, Value>> {
         match *self {
             Value::Object(ref mut map) => Some(map),
@@ -128,13 +82,13 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is an Array. Returns false otherwise.
+    /// Returns `true` if the value is an `Array`.
     pub fn is_array(&self) -> bool {
         self.as_array().is_some()
     }
 
-    /// If the `Value` is an Array, returns the associated vector.
-    /// Returns None otherwise.
+    /// If the value is an `Array`, returns the associated `Vec`.
+    /// Returns `None` otherwise.
     pub fn as_array(&self) -> Option<&Vec<Value>> {
         match *self {
             Value::Array(ref array) => Some(&*array),
@@ -142,8 +96,8 @@ impl Value {
         }
     }
 
-    /// If the `Value` is an Array, returns the associated mutable vector.
-    /// Returns None otherwise.
+    /// If the value is an `Array`, returns the associated mutable `Vec`.
+    /// Returns `None` otherwise.
     pub fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
         match *self {
             Value::Array(ref mut list) => Some(list),
@@ -151,13 +105,13 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a String. Returns false otherwise.
+    /// Returns true if the value is a `String`.
     pub fn is_string(&self) -> bool {
         self.as_str().is_some()
     }
 
-    /// If the `Value` is a String, returns the associated str.
-    /// Returns None otherwise.
+    /// If the value is a `String`, returns the associated `&str`.
+    /// Returns `None` otherwise.
     pub fn as_str(&self) -> Option<&str> {
         match *self {
             Value::String(ref s) => Some(s),
@@ -165,7 +119,7 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a Number. Returns false otherwise.
+    /// Returns `true` if the value is a `Number`.
     pub fn is_number(&self) -> bool {
         match *self {
             Value::I64(_) | Value::U64(_) => true,
@@ -173,7 +127,7 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a i64. Returns false otherwise.
+    /// Returns `true` if the value is an `i64`.
     pub fn is_i64(&self) -> bool {
         match *self {
             Value::I64(_) => true,
@@ -181,7 +135,7 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a u64. Returns false otherwise.
+    /// Returns `true` if the value is a `u64`.
     pub fn is_u64(&self) -> bool {
         match *self {
             Value::U64(_) => true,
@@ -189,8 +143,8 @@ impl Value {
         }
     }
 
-    /// If the `Value` is a number, return or cast it to a i64.
-    /// Returns None otherwise.
+    /// If the value is a number, return or cast it to a `i64`.
+    /// Returns `None` otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Value::I64(n) => Some(n),
@@ -199,8 +153,8 @@ impl Value {
         }
     }
 
-    /// If the `Value` is a number, return or cast it to a u64.
-    /// Returns None otherwise.
+    /// If the value is a number, return or cast it to a `u64`.
+    /// Returns `None` otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
             Value::I64(n) => NumCast::from(n),
@@ -209,13 +163,13 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a Boolean. Returns false otherwise.
+    /// Returns `true` if the value is a `Boolean`.
     pub fn is_boolean(&self) -> bool {
         self.as_bool().is_some()
     }
 
-    /// If the `Value` is a Boolean, returns the associated bool.
-    /// Returns None otherwise.
+    /// If the value is a `Boolean`, returns the associated `bool`.
+    /// Returns `None` otherwise.
     pub fn as_bool(&self) -> Option<bool> {
         match *self {
             Value::Bool(b) => Some(b),
@@ -223,13 +177,13 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a Null. Returns false otherwise.
+    /// Returns `true` if the value is a `Null`.
     pub fn is_null(&self) -> bool {
         self.as_null().is_some()
     }
 
-    /// If the `Value` is a Null, returns ().
-    /// Returns None otherwise.
+    /// If the value is a `Null`, returns `()`.
+    /// Returns `None` otherwise.
     pub fn as_null(&self) -> Option<()> {
         match *self {
             Value::Null => Some(()),
@@ -386,7 +340,7 @@ impl str::FromStr for Value {
     }
 }
 
-/// Create a `serde::Serializer` that serializes a `Serialize`e into a `Value`.
+/// A `serde::Serializer` that serializes into a `Value`.
 pub struct Serializer {
     value: Value,
 }
@@ -808,7 +762,7 @@ impl ser::Serializer for Serializer {
     }
 }
 
-/// Creates a `serde::Deserializer` from a `json::Value` object.
+/// A `serde::Deserializer` that deserializes from a `Value`.
 pub struct Deserializer {
     value: Option<Value>,
 }
@@ -1165,7 +1119,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
     }
 }
 
-/// Shortcut function to encode a `T` into a JSON `Value`
+/// Shortcut function to encode a `T` into a `Value`.
 ///
 /// ```rust
 /// use canonical_json::to_value;
@@ -1180,7 +1134,7 @@ pub fn to_value<T>(value: T) -> Value
     ser.unwrap()
 }
 
-/// Shortcut function to decode a JSON `Value` into a `T`
+/// Shortcut function to decode a `Value` into a `T`.
 pub fn from_value<T>(value: Value) -> Result<T, Error>
     where T: de::Deserialize,
 {

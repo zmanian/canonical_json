@@ -1,7 +1,4 @@
-//! JSON Errors
-//!
-//! This module is centered around the `Error` and `ErrorCode` types, which represents all possible
-//! `canonical_json` errors.
+//! Errors encountered during serialization and deserialization.
 
 use std::error;
 use std::fmt;
@@ -11,7 +8,7 @@ use std::result;
 use serde::de;
 use serde::ser;
 
-/// The errors that can arise while parsing a JSON stream.
+/// Syntax and parsing errors.
 #[derive(Clone, PartialEq, Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
@@ -152,14 +149,14 @@ impl fmt::Display for ErrorCode {
     }
 }
 
-/// This type represents all possible errors that can occur when serializing or deserializing a
+/// All possible errors that can occur when serializing or deserializing a
 /// value into JSON.
 #[derive(Debug)]
 pub enum Error {
-    /// The JSON value had some syntatic error.
+    /// Syntatic error with associated line and column number.
     Syntax(ErrorCode, usize, usize),
 
-    /// Some IO error occurred when serializing or deserializing a value.
+    /// IO error that occurred when serializing or deserializing a value.
     Io(io::Error),
 }
 
@@ -266,5 +263,5 @@ impl ser::Error for Error {
     }
 }
 
-/// Helper alias for `Result` objects that return a JSON `Error`.
+/// Alias for `Result`s that return a JSON `Error`.
 pub type Result<T> = result::Result<T, Error>;

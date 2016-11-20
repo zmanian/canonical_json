@@ -1,4 +1,4 @@
-//! JSON Deserialization
+//! Deserialize bytes into JSON values.
 //!
 //! This module provides for JSON deserialization with the type `Deserializer`.
 

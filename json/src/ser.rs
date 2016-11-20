@@ -1,4 +1,4 @@
-//! JSON Serialization
+//! Serialize JSON values into bytes.
 //!
 //! This module provides for JSON serialization with the type `Serializer`.
 
