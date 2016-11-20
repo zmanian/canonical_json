@@ -3,7 +3,6 @@
 use std::error;
 use std::fmt;
 use std::io;
-use std::result;
 
 use serde::de;
 use serde::ser;
@@ -262,6 +261,3 @@ impl ser::Error for Error {
         Error::Syntax(ErrorCode::Custom(msg.into()), 0, 0)
     }
 }
-
-/// Alias for `Result`s that return a JSON `Error`.
-pub type Result<T> = result::Result<T, Error>;

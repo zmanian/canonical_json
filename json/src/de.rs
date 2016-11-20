@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use serde::de;
 
-use super::error::{Error, ErrorCode, Result};
+use super::error::{Error, ErrorCode};
 
 use read::{self, Read};
 
@@ -31,7 +31,7 @@ impl<Iter> Deserializer<Iter>
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
     /// only has trailing whitespace.
     #[inline]
-    pub fn end(&mut self) -> Result<()> {
+    pub fn end(&mut self) -> Result<(), Error> {
         self.0.end()
     }
 }
@@ -42,7 +42,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     type Error = Error;
 
     #[inline]
-    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         self.0.deserialize(visitor)
@@ -50,7 +50,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
 
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
-    fn deserialize_option<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(&mut self, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         self.0.deserialize_option(visitor)
@@ -62,7 +62,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
         &mut self,
         name: &'static str,
         visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         self.0.deserialize_newtype_struct(name, visitor)
@@ -76,7 +76,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
         name: &'static str,
         variants: &'static [&'static str],
         visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::EnumVisitor,
     {
         self.0.deserialize_enum(name, variants, visitor)
@@ -110,7 +110,7 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn end(&mut self) -> Result<()> {
+    fn end(&mut self) -> Result<(), Error> {
         try!(self.reject_whitespace());
         if try!(self.eof()) {
             Ok(())
@@ -119,15 +119,15 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn eof(&mut self) -> Result<bool> {
+    fn eof(&mut self) -> Result<bool, Error> {
         Ok(try!(self.peek()).is_none())
     }
 
-    fn peek(&mut self) -> Result<Option<u8>> {
+    fn peek(&mut self) -> Result<Option<u8>, Error> {
         self.read.peek().map_err(Error::Io)
     }
 
-    fn peek_or_null(&mut self) -> Result<u8> {
+    fn peek_or_null(&mut self) -> Result<u8, Error> {
         Ok(try!(self.peek()).unwrap_or(b'\x00'))
     }
 
@@ -135,11 +135,11 @@ impl<R: Read> DeserializerImpl<R> {
         self.read.discard();
     }
 
-    fn next_char(&mut self) -> Result<Option<u8>> {
+    fn next_char(&mut self) -> Result<Option<u8>, Error> {
         self.read.next().map_err(Error::Io)
     }
 
-    fn next_char_or_null(&mut self) -> Result<u8> {
+    fn next_char_or_null(&mut self) -> Result<u8, Error> {
         Ok(try!(self.next_char()).unwrap_or(b'\x00'))
     }
 
@@ -155,7 +155,7 @@ impl<R: Read> DeserializerImpl<R> {
         Error::Syntax(reason, pos.line, pos.column)
     }
 
-    fn reject_whitespace(&mut self) -> Result<()> {
+    fn reject_whitespace(&mut self) -> Result<(), Error> {
         match try!(self.peek_or_null()) {
             b' ' | b'\n' | b'\t' | b'\r' => {
                 Err(self.peek_error(ErrorCode::UnexpectedWhitespace))
@@ -166,7 +166,7 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
+    fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         try!(self.reject_whitespace());
@@ -226,7 +226,7 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn parse_ident(&mut self, ident: &[u8]) -> Result<()> {
+    fn parse_ident(&mut self, ident: &[u8]) -> Result<(), Error> {
         for c in ident {
             if Some(*c) != try!(self.next_char()) {
                 return Err(self.error(ErrorCode::ExpectedSomeIdent));
@@ -236,7 +236,7 @@ impl<R: Read> DeserializerImpl<R> {
         Ok(())
     }
 
-    fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
+    fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         match try!(self.next_char_or_null()) {
@@ -284,7 +284,7 @@ impl<R: Read> DeserializerImpl<R> {
         pos: bool,
         significand: u64,
         mut visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         if pos {
@@ -301,7 +301,7 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn parse_object_colon(&mut self) -> Result<()> {
+    fn parse_object_colon(&mut self) -> Result<(), Error> {
         try!(self.reject_whitespace());
 
         match try!(self.peek()) {
@@ -319,7 +319,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     type Error = Error;
 
     #[inline]
-    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         self.parse_value(visitor)
@@ -327,7 +327,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
 
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
-    fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         try!(self.reject_whitespace());
@@ -348,7 +348,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
         &mut self,
         _name: &str,
         mut visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         visitor.visit_newtype_struct(self)
@@ -362,7 +362,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
         _name: &str,
         _variants: &'static [&'static str],
         mut visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::EnumVisitor,
     {
         try!(self.reject_whitespace());
@@ -401,7 +401,7 @@ struct AscendingKeyDeserializer<'a, R: Read + 'a> {
 }
 
 impl<'a, R: Read> AscendingKeyDeserializer<'a, R> {
-    fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
+    fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         try!(self.de.reject_whitespace());
@@ -449,7 +449,7 @@ impl<'a, R: Read> de::Deserializer for AscendingKeyDeserializer<'a, R> {
     type Error = Error;
 
     #[inline]
-    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         self.parse_value(visitor)
@@ -479,7 +479,7 @@ impl<'a, R: Read + 'a> SeqVisitor<'a, R> {
 impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
     type Error = Error;
 
-    fn visit<T>(&mut self) -> Result<Option<T>>
+    fn visit<T>(&mut self) -> Result<Option<T>, Error>
         where T: de::Deserialize,
     {
         try!(self.de.reject_whitespace());
@@ -508,7 +508,7 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
         Ok(Some(value))
     }
 
-    fn end(&mut self) -> Result<()> {
+    fn end(&mut self) -> Result<(), Error> {
         try!(self.de.reject_whitespace());
 
         match try!(self.de.next_char()) {
@@ -538,7 +538,7 @@ impl<'a, R: Read + 'a> MapVisitor<'a, R> {
 impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
     type Error = Error;
 
-    fn visit_key<K>(&mut self) -> Result<Option<K>>
+    fn visit_key<K>(&mut self) -> Result<Option<K>, Error>
         where K: de::Deserialize,
     {
         try!(self.de.reject_whitespace());
@@ -580,7 +580,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
         }
     }
 
-    fn visit_value<V>(&mut self) -> Result<V>
+    fn visit_value<V>(&mut self) -> Result<V, Error>
         where V: de::Deserialize,
     {
         try!(self.de.parse_object_colon());
@@ -588,7 +588,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
         Ok(try!(de::Deserialize::deserialize(self.de)))
     }
 
-    fn end(&mut self) -> Result<()> {
+    fn end(&mut self) -> Result<(), Error> {
         try!(self.de.reject_whitespace());
 
         match try!(self.de.next_char()) {
@@ -598,11 +598,9 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
         }
     }
 
-    fn missing_field<V>(&mut self, field: &'static str) -> Result<V>
+    fn missing_field<V>(&mut self, field: &'static str) -> Result<V, Error>
         where V: de::Deserialize,
     {
-        use std;
-
         struct MissingFieldDeserializer(&'static str);
 
         impl de::Deserializer for MissingFieldDeserializer {
@@ -611,7 +609,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
             fn deserialize<V>(
                 &mut self,
                 _visitor: V
-            ) -> std::result::Result<V::Value, Self::Error>
+            ) -> Result<V::Value, Self::Error>
                 where V: de::Visitor,
             {
                 let &mut MissingFieldDeserializer(field) = self;
@@ -621,7 +619,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
             fn deserialize_option<V>(
                 &mut self,
                 mut visitor: V
-            ) -> std::result::Result<V::Value, Self::Error>
+            ) -> Result<V::Value, Self::Error>
                 where V: de::Visitor,
             {
                 visitor.visit_none()
@@ -655,7 +653,7 @@ impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
 impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
     type Error = Error;
 
-    fn visit_variant<V>(&mut self) -> Result<V>
+    fn visit_variant<V>(&mut self) -> Result<V, Error>
         where V: de::Deserialize,
     {
         let val = try!(de::Deserialize::deserialize(self.de));
@@ -663,17 +661,17 @@ impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
         Ok(val)
     }
 
-    fn visit_unit(&mut self) -> Result<()> {
+    fn visit_unit(&mut self) -> Result<(), Error> {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_newtype<T>(&mut self) -> Result<T>
+    fn visit_newtype<T>(&mut self) -> Result<T, Error>
         where T: de::Deserialize,
     {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> Result<V::Value>
+    fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         de::Deserializer::deserialize(self.de, visitor)
@@ -683,7 +681,7 @@ impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
         &mut self,
         _fields: &'static [&'static str],
         visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         de::Deserializer::deserialize(self.de, visitor)
@@ -705,23 +703,23 @@ impl<'a, R: Read + 'a> KeyOnlyVariantVisitor<'a, R> {
 impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
     type Error = Error;
 
-    fn visit_variant<V>(&mut self) -> Result<V>
+    fn visit_variant<V>(&mut self) -> Result<V, Error>
         where V: de::Deserialize,
     {
         Ok(try!(de::Deserialize::deserialize(self.de)))
     }
 
-    fn visit_unit(&mut self) -> Result<()> {
+    fn visit_unit(&mut self) -> Result<(), Error> {
         Ok(())
     }
 
-    fn visit_newtype<T>(&mut self) -> Result<T>
+    fn visit_newtype<T>(&mut self) -> Result<T, Error>
         where T: de::Deserialize,
     {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> Result<V::Value>
+    fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         de::Deserializer::deserialize(self.de, visitor)
@@ -731,7 +729,7 @@ impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
         &mut self,
         _fields: &'static [&'static str],
         visitor: V
-    ) -> Result<V::Value>
+    ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         de::Deserializer::deserialize(self.de, visitor)
@@ -767,9 +765,9 @@ impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
           T: de::Deserialize,
 {
-    type Item = Result<T>;
+    type Item = Result<T, Error>;
 
-    fn next(&mut self) -> Option<Result<T>> {
+    fn next(&mut self) -> Option<Result<T, Error>> {
         if let Err(e) = self.deser.reject_whitespace() {
             return Some(Err(e));
         };
@@ -789,7 +787,7 @@ impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
 
 //////////////////////////////////////////////////////////////////////////////
 
-fn from_trait<R, T>(read: R) -> Result<T>
+fn from_trait<R, T>(read: R) -> Result<T, Error>
     where R: Read,
           T: de::Deserialize,
 {
@@ -803,7 +801,7 @@ fn from_trait<R, T>(read: R) -> Result<T>
 
 /// Decodes a json value from an iterator over an iterator
 /// `Iterator<Item=io::Result<u8>>`.
-pub fn from_iter<I, T>(iter: I) -> Result<T>
+pub fn from_iter<I, T>(iter: I) -> Result<T, Error>
     where I: Iterator<Item = io::Result<u8>>,
           T: de::Deserialize,
 {
@@ -811,7 +809,7 @@ pub fn from_iter<I, T>(iter: I) -> Result<T>
 }
 
 /// Decodes a json value from a `std::io::Read`.
-pub fn from_reader<R, T>(rdr: R) -> Result<T>
+pub fn from_reader<R, T>(rdr: R) -> Result<T, Error>
     where R: io::Read,
           T: de::Deserialize,
 {
@@ -819,14 +817,14 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
 }
 
 /// Decodes a json value from a byte slice `&[u8]`.
-pub fn from_slice<T>(v: &[u8]) -> Result<T>
+pub fn from_slice<T>(v: &[u8]) -> Result<T, Error>
     where T: de::Deserialize,
 {
     from_trait(read::SliceRead::new(v))
 }
 
 /// Decodes a json value from a `&str`.
-pub fn from_str<T>(s: &str) -> Result<T>
+pub fn from_str<T>(s: &str) -> Result<T, Error>
     where T: de::Deserialize,
 {
     from_trait(read::StrRead::new(s))

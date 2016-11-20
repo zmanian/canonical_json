@@ -2,7 +2,7 @@ use std::{cmp, io, str};
 
 use serde::iter::LineColIterator;
 
-use super::error::{Error, ErrorCode, Result};
+use super::error::{Error, ErrorCode};
 
 /// Trait used by the deserializer for iterating over input. This is manually
 /// "specialized" for iterating over &[u8]. Once feature(specialization) is
@@ -38,7 +38,7 @@ pub trait Read {
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str>;
+    ) -> Result<&'s str, Error>;
 }
 
 pub struct Position {
@@ -136,7 +136,7 @@ impl<Iter> Read for IteratorRead<Iter>
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
+    ) -> Result<&'s str, Error> {
         loop {
             let ch = match try!(self.next().map_err(Error::Io)) {
                 Some(ch) => ch,
@@ -199,9 +199,9 @@ impl<'a> SliceRead<'a> {
         &'s mut self,
         scratch: &'s mut Vec<u8>,
         result: F
-    ) -> Result<T>
+    ) -> Result<T, Error>
         where T: 's,
-              F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
+              F: FnOnce(&'s Self, &'s [u8]) -> Result<T, Error>,
     {
         // Index of the first byte not yet copied into the scratch space.
         let mut start = self.index;
@@ -285,7 +285,7 @@ impl<'a> Read for SliceRead<'a> {
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
+    ) -> Result<&'s str, Error> {
         self.parse_str_bytes(scratch, as_str)
     }
 }
@@ -327,7 +327,7 @@ impl<'a> Read for StrRead<'a> {
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
+    ) -> Result<&'s str, Error> {
         self.delegate.parse_str_bytes(scratch, |_, bytes| {
             // The input is assumed to be valid UTF-8 and the \u-escapes are
             // checked along the way, so don't need to check here.
@@ -365,19 +365,19 @@ static ESCAPE: [bool; 256] = [
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // F
 ];
 
-fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T> {
+fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T, Error> {
     let pos = read.position();
     Err(Error::Syntax(reason, pos.line, pos.column))
 }
 
-fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
+fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str, Error> {
     str::from_utf8(slice)
         .or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
-fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
+fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<(), Error> {
     let ch = match try!(read.next().map_err(Error::Io)) {
         Some(ch) => ch,
         None => {
