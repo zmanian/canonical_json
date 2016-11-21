@@ -6,9 +6,10 @@ Rust library for serializing and deserializing Canonical JSON.
 
 ## What is Canonical JSON?
 
-Canonical JSON is a subset of JSON in which values each have a single,
+Canonical JSON is a variant of JSON in which values each have a single,
 unambiguous serialized form. It provides meaningful and repeatable hashes
-of encoded data. Canonical JSON is parsable with any full JSON parser.
+of encoded data. Canonical JSON can be parsed by regular JSON parsers provided
+that no control characters appear in strings.
 
 Compared to JSON:
 
