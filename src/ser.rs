@@ -702,7 +702,7 @@ impl<'a, W> ser::Serializer for AscendingKeySerializer<'a, W>
 }
 
 /// Serializes and escapes a `&str` into a JSON string.
-pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<(), Error>
+fn escape_str<W>(wr: &mut W, value: &str) -> Result<(), Error>
     where W: io::Write,
 {
     let bytes = value.as_bytes();
