@@ -4,7 +4,6 @@ version = "0.8.3"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Canonical JSON serialization format"
-readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
 [dependencies]
@@ -13,3 +12,6 @@ serde_json = "0.8"
 num-traits = "~0.1.32"
 itoa = "0.1"
 dtoa = "0.2"
+
+[dev-dependencies]
+serde_derive = "0.8"
