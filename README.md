@@ -74,16 +74,6 @@ and this to your crate root:
 extern crate canonical_json;
 ```
 
-or add this if you would also like to derive `Serialize` and `Deserialize`:
-
-```rust
-#![feature(proc_macro)]
-
-#[macro_use]
-extern crate serde_derive;
-extern crate canonical_json;
-```
-
 ## Type-based serialization and deserialization
 
 Structs and enums can be serialized and deserialized to/from Canonical JSON
