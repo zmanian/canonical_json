@@ -2,7 +2,7 @@
 
 Rust library for serializing and deserializing Canonical JSON.
 
-- [Documentation](https://vtllf.org/rustdoc/canonical_json/)
+- [Documentation](https://vtllf.org/rustdoc/canonical_json/canonical_json/)
 
 ## What is Canonical JSON?
 

@@ -4,6 +4,8 @@ version = "0.8.3"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Canonical JSON serialization format"
+documentation = "https://vtllf.org/rustdoc/canonical_json/canonical_json/"
+repository = "https://github.com/vtduncan/canonical_json"
 keywords = ["json", "serde", "serialization"]
 
 [dependencies]
