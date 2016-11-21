@@ -7,13 +7,9 @@ description = "Canonical JSON serialization format"
 readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
-[features]
-unstable-testing = ["clippy"]
-
 [dependencies]
 serde = "0.8"
 serde_json = "0.8"
 num-traits = "~0.1.32"
-clippy = { version = "^0.*", optional = true }
 itoa = "0.1"
 dtoa = "0.2"
