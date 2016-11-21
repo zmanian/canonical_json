@@ -35,6 +35,112 @@ macro_rules! treemap {
     };
 }
 
+fn assert_encode_ok<T>(errors: &[(T, &str)])
+    where T: PartialEq + Debug + ser::Serialize,
+{
+    for &(ref value, out) in errors {
+        let out = out.to_string();
+
+        let s = super::to_string(value).unwrap();
+        assert_eq!(s, out);
+
+        let v = to_value(&value);
+        let s = super::to_string(&v).unwrap();
+        assert_eq!(s, out);
+    }
+}
+
+fn assert_encode_err<T>(errors: &[(T, SyntaxError)])
+    where T: PartialEq + Debug + ser::Serialize,
+{
+    for &(ref value, ref code) in errors {
+        match super::to_string(value).unwrap_err() {
+            Error::Syntax(ref c, _, _) => assert_eq!(c, code),
+            _ => panic!("unexpected IO error"),
+        }
+    }
+}
+
+fn assert_parse_ok<T>(tests: Vec<(&str, T)>)
+    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
+{
+    for (s, value) in tests {
+        let v: T = from_str(s).unwrap();
+        assert_eq!(v, value.clone());
+
+        let v: T = from_slice(s.as_bytes()).unwrap();
+        assert_eq!(v, value.clone());
+
+        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
+        assert_eq!(v, value.clone());
+
+        // Make sure we can deserialize into a `Value`.
+        let json_value: Value = from_str(s).unwrap();
+        assert_eq!(json_value, to_value(&value));
+
+        // Make sure we can deserialize from a `Value`.
+        let v: T = from_value(json_value.clone()).unwrap();
+        assert_eq!(v, value);
+
+        // Make sure we can round trip back to `Value`.
+        let json_value2: Value = from_value(json_value.clone()).unwrap();
+        assert_eq!(json_value2, json_value);
+    }
+}
+
+// For testing representations that the deserializer accepts but the serializer
+// never generates. These do not survive a round-trip through Value.
+fn assert_parse_unusual_ok<T>(tests: Vec<(&str, T)>)
+    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
+{
+    for (s, value) in tests {
+        let v: T = from_str(s).unwrap();
+        assert_eq!(v, value.clone());
+
+        let v: T = from_slice(s.as_bytes()).unwrap();
+        assert_eq!(v, value.clone());
+
+        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
+        assert_eq!(v, value.clone());
+    }
+}
+
+macro_rules! assert_parse_err {
+    ($name:ident::<$($ty:ty),*>($arg:expr) => $err:expr) => {
+        match ($err, &$name::<$($ty),*>($arg).unwrap_err()) {
+            (
+                &Error::Syntax(ref expected_code, expected_line, expected_col),
+                &Error::Syntax(ref actual_code, actual_line, actual_col),
+            ) if expected_code == actual_code
+                && expected_line == actual_line
+                && expected_col == actual_col => { /* pass */ }
+            (expected_err, actual_err) => {
+                panic!("unexpected {} error: {}, expected: {}", stringify!($name), actual_err, expected_err)
+            }
+        }
+    };
+}
+
+// FIXME (#5527): these could be merged once UFCS is finished.
+fn assert_parse_err<T>(errors: Vec<(&'static str, Error)>)
+    where T: Debug + PartialEq + de::Deserialize,
+{
+    for &(s, ref err) in &errors {
+        assert_parse_err!(from_str::<T>(s) => err);
+        assert_parse_err!(from_slice::<T>(s.as_bytes()) => err);
+        assert_parse_err!(from_iter::<_, T>(s.bytes().map(Ok)) => err);
+    }
+}
+
+fn assert_parse_slice_error<T>(errors: Vec<(&[u8], Error)>)
+    where T: Debug + PartialEq + de::Deserialize,
+{
+    for &(s, ref err) in &errors {
+        assert_parse_err!(from_slice::<T>(s) => err);
+        assert_parse_err!(from_iter::<_, T>(s.iter().cloned().map(Ok)) => err);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 enum Animal {
@@ -56,62 +162,36 @@ struct Outer {
     inner: Vec<Inner>,
 }
 
-fn test_encode_ok<T>(errors: &[(T, &str)])
-    where T: PartialEq + Debug + ser::Serialize,
-{
-    for &(ref value, out) in errors {
-        let out = out.to_string();
-
-        let s = super::to_string(value).unwrap();
-        assert_eq!(s, out);
-
-        let v = to_value(&value);
-        let s = super::to_string(&v).unwrap();
-        assert_eq!(s, out);
-    }
-}
-
-fn test_encode_err<T>(errors: &[(T, SyntaxError)])
-    where T: PartialEq + Debug + ser::Serialize,
-{
-    for &(ref value, ref code) in errors {
-        match super::to_string(value).unwrap_err() {
-            Error::Syntax(ref c, _, _) => assert_eq!(c, code),
-            _ => panic!("unexpected IO error"),
-        }
-    }
-}
-
 #[test]
-fn test_write_null() {
+fn write_null() {
     let tests = &[
         ((), "null"),
     ];
-    test_encode_ok(tests);
+    assert_encode_ok(tests);
 }
 
 #[test]
-fn test_write_u64() {
+fn write_u64() {
     let tests = &[
         (3u64, "3"),
         (u64::MAX, &u64::MAX.to_string()),
     ];
-    test_encode_ok(tests);
+    assert_encode_ok(tests);
 }
 
 #[test]
-fn test_write_i64() {
+fn write_i64() {
     let tests = &[
         (3i64, "3"),
         (-2i64, "-2"),
         (-1234i64, "-1234"),
         (i64::MIN, &i64::MIN.to_string()),
     ];
-    test_encode_ok(tests);
+    assert_encode_ok(tests);
 }
 
 #[test]
-fn test_encode_nonfinite_float_yields_null() {
+fn encode_nonfinite_float_yields_null() {
     let v = to_value(::std::f64::NAN);
     assert!(v.is_null());
 
@@ -126,7 +206,7 @@ fn test_encode_nonfinite_float_yields_null() {
 }
 
 #[test]
-fn test_write_str() {
+fn write_str() {
     let tests = &[
         ("", "\"\""),
         ("foo", "\"foo\""),
@@ -137,27 +217,27 @@ fn test_write_str() {
         ("\t", "\"\t\""),
         ("\u{2603}", "\"\u{2603}\""),
     ];
-    test_encode_ok(tests);
+    assert_encode_ok(tests);
 }
 
 #[test]
-fn test_write_bool() {
+fn write_bool() {
     let tests = &[
         (true, "true"),
         (false, "false"),
     ];
-    test_encode_ok(tests);
+    assert_encode_ok(tests);
 }
 
 #[test]
-fn test_write_list() {
-    test_encode_ok(&[
+fn write_list() {
+    assert_encode_ok(&[
         (vec![], "[]"),
         (vec![true], "[true]"),
         (vec![true, false], "[true,false]"),
     ]);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (vec![vec![], vec![], vec![]], "[[],[],[]]"),
         (vec![vec![1, 2, 3], vec![], vec![]], "[[1,2,3],[],[]]"),
         (vec![vec![], vec![1, 2, 3], vec![]], "[[],[1,2,3],[]]"),
@@ -169,7 +249,7 @@ fn test_write_list() {
         Value::Null,
         Value::Array(vec![Value::String("foo\nbar".to_string()), Value::U64(4)])]);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (
             long_test_list.clone(),
             "[false,null,[\"foo\nbar\",4]]",
@@ -178,8 +258,8 @@ fn test_write_list() {
 }
 
 #[test]
-fn test_write_object() {
-    test_encode_ok(&[
+fn write_object() {
+    assert_encode_ok(&[
         (treemap!(), "{}"),
         (treemap!("a".to_string() => true), "{\"a\":true}"),
         (
@@ -190,7 +270,7 @@ fn test_write_object() {
             "{\"a\":true,\"b\":false}"),
     ]);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (
             treemap![
                 "a".to_string() => treemap![],
@@ -244,7 +324,7 @@ fn test_write_object() {
         ])
     ));
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (
             complex_obj.clone(),
             "{\
@@ -258,15 +338,15 @@ fn test_write_object() {
 }
 
 #[test]
-fn test_write_tuple() {
-    test_encode_ok(&[
+fn write_tuple() {
+    assert_encode_ok(&[
         (
             (5,),
             "[5]",
         ),
     ]);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (
             (5, (6, "abc")),
             "[5,[6,\"abc\"]]",
@@ -275,8 +355,8 @@ fn test_write_tuple() {
 }
 
 #[test]
-fn test_write_enum() {
-    test_encode_ok(&[
+fn write_enum() {
+    assert_encode_ok(&[
         (
             Animal::Dog,
             "\"Dog\"",
@@ -305,148 +385,68 @@ fn test_write_enum() {
 }
 
 #[test]
-fn test_write_option() {
-    test_encode_ok(&[
+fn write_option() {
+    assert_encode_ok(&[
         (None, "null"),
         (Some("jodhpurs"), "\"jodhpurs\""),
     ]);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (None, "null"),
         (Some(vec!["foo", "bar"]), "[\"foo\",\"bar\"]"),
     ]);
 }
 
 #[test]
-fn test_write_newtype_struct() {
+fn write_newtype_struct() {
     #[derive(Serialize, PartialEq, Debug)]
     struct Newtype(BTreeMap<String, i32>);
 
     let inner = Newtype(treemap!(String::from("inner") => 123));
     let outer = treemap!(String::from("outer") => to_value(&inner));
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (inner, r#"{"inner":123}"#),
     ]);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (outer, r#"{"outer":{"inner":123}}"#),
     ]);
 }
 
 #[test]
-fn test_write_unsorted_struct() {
+fn write_unsorted_struct() {
     #[derive(Serialize, PartialEq, Debug)]
     struct UnsortedStruct { z: i64, a: i64 };
 
     #[derive(Serialize, PartialEq, Debug)]
     enum UnsortedEnum { Boo { z: i64, a: i64 } };
 
-    test_encode_err(&[
+    assert_encode_err(&[
         (UnsortedStruct { z: 1, a: 2 }, SyntaxError::UnsortedKey),
     ]);
 
-    test_encode_err(&[
+    assert_encode_err(&[
         (UnsortedEnum::Boo { z: 1, a: 2 }, SyntaxError::UnsortedKey),
     ]);
 }
 
-fn test_parse_ok<T>(tests: Vec<(&str, T)>)
-    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
-{
-    for (s, value) in tests {
-        let v: T = from_str(s).unwrap();
-        assert_eq!(v, value.clone());
-
-        let v: T = from_slice(s.as_bytes()).unwrap();
-        assert_eq!(v, value.clone());
-
-        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
-        assert_eq!(v, value.clone());
-
-        // Make sure we can deserialize into a `Value`.
-        let json_value: Value = from_str(s).unwrap();
-        assert_eq!(json_value, to_value(&value));
-
-        // Make sure we can deserialize from a `Value`.
-        let v: T = from_value(json_value.clone()).unwrap();
-        assert_eq!(v, value);
-
-        // Make sure we can round trip back to `Value`.
-        let json_value2: Value = from_value(json_value.clone()).unwrap();
-        assert_eq!(json_value2, json_value);
-    }
-}
-
-// For testing representations that the deserializer accepts but the serializer
-// never generates. These do not survive a round-trip through Value.
-fn test_parse_unusual_ok<T>(tests: Vec<(&str, T)>)
-    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
-{
-    for (s, value) in tests {
-        let v: T = from_str(s).unwrap();
-        assert_eq!(v, value.clone());
-
-        let v: T = from_slice(s.as_bytes()).unwrap();
-        assert_eq!(v, value.clone());
-
-        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
-        assert_eq!(v, value.clone());
-    }
-}
-
-macro_rules! test_parse_err {
-    ($name:ident::<$($ty:ty),*>($arg:expr) => $err:expr) => {
-        match ($err, &$name::<$($ty),*>($arg).unwrap_err()) {
-            (
-                &Error::Syntax(ref expected_code, expected_line, expected_col),
-                &Error::Syntax(ref actual_code, actual_line, actual_col),
-            ) if expected_code == actual_code
-                && expected_line == actual_line
-                && expected_col == actual_col => { /* pass */ }
-            (expected_err, actual_err) => {
-                panic!("unexpected {} error: {}, expected: {}", stringify!($name), actual_err, expected_err)
-            }
-        }
-    };
-}
-
-// FIXME (#5527): these could be merged once UFCS is finished.
-fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
-    where T: Debug + PartialEq + de::Deserialize,
-{
-    for &(s, ref err) in &errors {
-        test_parse_err!(from_str::<T>(s) => err);
-        test_parse_err!(from_slice::<T>(s.as_bytes()) => err);
-        test_parse_err!(from_iter::<_, T>(s.bytes().map(Ok)) => err);
-    }
-}
-
-fn test_parse_slice_err<T>(errors: Vec<(&[u8], Error)>)
-    where T: Debug + PartialEq + de::Deserialize,
-{
-    for &(s, ref err) in &errors {
-        test_parse_err!(from_slice::<T>(s) => err);
-        test_parse_err!(from_iter::<_, T>(s.iter().cloned().map(Ok)) => err);
-    }
-}
-
 #[test]
-fn test_parse_null() {
-    test_parse_err::<()>(vec![
+fn parse_null() {
+    assert_parse_err::<()>(vec![
         ("n", Error::Syntax(SyntaxError::ExpectedSomeIdent, 1, 1)),
         ("nul", Error::Syntax(SyntaxError::ExpectedSomeIdent, 1, 3)),
         ("nulla", Error::Syntax(SyntaxError::TrailingCharacters, 1, 5)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("null", ()),
     ]);
 }
 
 #[test]
-fn test_parse_bool() {
-    test_parse_err::<bool>(vec![
+fn parse_bool() {
+    assert_parse_err::<bool>(vec![
         ("t", Error::Syntax(SyntaxError::ExpectedSomeIdent, 1, 1)),
         ("truz", Error::Syntax(SyntaxError::ExpectedSomeIdent, 1, 4)),
         ("f", Error::Syntax(SyntaxError::ExpectedSomeIdent, 1, 1)),
@@ -457,15 +457,15 @@ fn test_parse_bool() {
         (" false ", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 1)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("true", true),
         ("false", false),
     ]);
 }
 
 #[test]
-fn test_parse_number_errors() {
-    test_parse_err::<i64>(vec![
+fn parse_number_errors() {
+    assert_parse_err::<i64>(vec![
         ("+", Error::Syntax(SyntaxError::ExpectedSomeValue, 1, 1)),
         (".", Error::Syntax(SyntaxError::ExpectedSomeValue, 1, 1)),
         ("-", Error::Syntax(SyntaxError::InvalidNumber, 1, 1)),
@@ -491,12 +491,12 @@ fn test_parse_number_errors() {
 }
 
 #[test]
-fn test_parse_i64() {
-    test_parse_err::<bool>(vec![
+fn parse_i64() {
+    assert_parse_err::<bool>(vec![
         (" -1234 ", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 1)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("-2", -2),
         ("-1234", -1234),
         (&i64::MIN.to_string(), i64::MIN),
@@ -505,8 +505,8 @@ fn test_parse_i64() {
 }
 
 #[test]
-fn test_parse_u64() {
-    test_parse_ok(vec![
+fn parse_u64() {
+    assert_parse_ok(vec![
         ("0", 0u64),
         ("3", 3u64),
         ("1234", 1234),
@@ -515,8 +515,8 @@ fn test_parse_u64() {
 }
 
 #[test]
-fn test_parse_string() {
-    test_parse_err::<String>(vec![
+fn parse_string() {
+    assert_parse_err::<String>(vec![
         ("\"", Error::Syntax(SyntaxError::EOFWhileParsingString, 1, 1)),
         ("\"lol", Error::Syntax(SyntaxError::EOFWhileParsingString, 1, 4)),
         (" \"foo\" ", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 1)),
@@ -530,12 +530,12 @@ fn test_parse_string() {
         ("\"\\uD83C\\uDF95\"", Error::Syntax(SyntaxError::InvalidEscape, 1, 3)),
     ]);
 
-    test_parse_slice_err::<String>(vec![
+    assert_parse_slice_error::<String>(vec![
         (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
             Error::Syntax(SyntaxError::InvalidEscape, 1, 3)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("\"\"", "".to_string()),
         ("\"foo\"", "foo".to_string()),
         ("\"\\\"\"", "\"".to_string()),
@@ -548,8 +548,8 @@ fn test_parse_string() {
 }
 
 #[test]
-fn test_parse_list() {
-    test_parse_err::<Vec<i64>>(vec![
+fn parse_list() {
+    assert_parse_err::<Vec<i64>>(vec![
         ("[", Error::Syntax(SyntaxError::EOFWhileParsingList, 1, 1)),
         ("[ ", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 2)),
         ("[1", Error::Syntax(SyntaxError::EOFWhileParsingList,  1, 2)),
@@ -563,36 +563,36 @@ fn test_parse_list() {
         ("[1,2 ]", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 5)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[]", vec![]),
         ("[null]", vec![()]),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[true]", vec![true]),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[3,1]", vec![3u64, 1]),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[[3],[1,2]]", vec![vec![3u64], vec![1, 2]]),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[1]", (1u64,)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[1,2]", (1u64, 2u64)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[1,2,3]", (1u64, 2u64, 3u64)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("[1,[2,3]]", (1u64, (2u64, 3u64))),
     ]);
 
@@ -601,8 +601,8 @@ fn test_parse_list() {
 }
 
 #[test]
-fn test_parse_object() {
-    test_parse_err::<BTreeMap<String, u32>>(vec![
+fn parse_object() {
+    assert_parse_err::<BTreeMap<String, u32>>(vec![
         ("{", Error::Syntax(SyntaxError::EOFWhileParsingObject, 1, 1)),
         ("{ ", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 2)),
         ("{1", Error::Syntax(SyntaxError::KeyMustBeAString, 1, 2)),
@@ -623,11 +623,11 @@ fn test_parse_object() {
         ("{\"a\":1,\"c\":2,\"b\":3}", Error::Syntax(SyntaxError::UnsortedKey, 1, 16)),
     ]);
 
-    test_parse_err::<BTreeMap<String, BTreeMap<String, i32>>>(vec![
+    assert_parse_err::<BTreeMap<String, BTreeMap<String, i32>>>(vec![
         ("{\"a\":{},\"b\":{\"i\":1},\"c\":{\"z\":1,\"\":2}}", Error::Syntax(SyntaxError::UnsortedKey, 1, 33)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("{}", treemap!()),
         (
             "{\"a\":3}",
@@ -639,7 +639,7 @@ fn test_parse_object() {
         ),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         (
             "{\"a\":{\"b\":3,\"c\":4}}",
             treemap!(
@@ -653,8 +653,8 @@ fn test_parse_object() {
 }
 
 #[test]
-fn test_parse_struct() {
-    test_parse_err::<Outer>(vec![
+fn parse_struct() {
+    assert_parse_err::<Outer>(vec![
         ("5", Error::Syntax(SyntaxError::InvalidType(de::Type::U64), 1, 1)),
         ("\"hello\"", Error::Syntax(SyntaxError::InvalidType(de::Type::Str), 1, 7)),
         ("{\"inner\":true}", Error::Syntax(SyntaxError::InvalidType(de::Type::Bool), 1, 13)),
@@ -662,7 +662,7 @@ fn test_parse_struct() {
         (r#"{"inner":[{"b":42,"c":[]}]}"#, Error::Syntax(SyntaxError::MissingField("a"), 1, 25)),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         (
             "{\"inner\":[]}",
             Outer {
@@ -691,8 +691,8 @@ fn test_parse_struct() {
 }
 
 #[test]
-fn test_parse_option() {
-    test_parse_ok(vec![
+fn parse_option() {
+    assert_parse_ok(vec![
         ("null", None::<String>),
         ("\"jodhpurs\"", Some("jodhpurs".to_string())),
     ]);
@@ -705,15 +705,15 @@ fn test_parse_option() {
     let value: Foo = from_str("{}").unwrap();
     assert_eq!(value, Foo { x: None });
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         ("{\"x\":null}", Foo { x: None }),
         ("{\"x\":5}", Foo { x: Some(5) }),
     ]);
 }
 
 #[test]
-fn test_parse_enum_errors() {
-    test_parse_err::<Animal>(vec![
+fn parse_enum_errors() {
+    assert_parse_err::<Animal>(vec![
         ("{}", Error::Syntax(SyntaxError::ExpectedSomeValue, 1, 2)),
         ("[]", Error::Syntax(SyntaxError::ExpectedSomeValue, 1, 1)),
         ("\"unknown\"", Error::Syntax(SyntaxError::UnknownVariant("unknown".to_string()), 1, 9)),
@@ -735,8 +735,8 @@ fn test_parse_enum_errors() {
 }
 
 #[test]
-fn test_parse_enum() {
-    test_parse_ok(vec![
+fn parse_enum() {
+    assert_parse_ok(vec![
         ("\"Dog\"", Animal::Dog),
         (
             "{\"Frog\":[\"Henry\",[]]}",
@@ -756,11 +756,11 @@ fn test_parse_enum() {
         ),
     ]);
 
-    test_parse_unusual_ok(vec![
+    assert_parse_unusual_ok(vec![
         ("{\"Dog\":[]}", Animal::Dog),
     ]);
 
-    test_parse_ok(vec![
+    assert_parse_ok(vec![
         (
             "{\"a\":\"Dog\",\"b\":{\"Frog\":[\"Henry\",[]]}}",
             treemap!(
@@ -772,8 +772,8 @@ fn test_parse_enum() {
 }
 
 #[test]
-fn test_parse_trailing_whitespace() {
-    test_parse_err::<[i64; 2]>(vec![
+fn parse_trailing_whitespace() {
+    assert_parse_err::<[i64; 2]>(vec![
         ("[1,2] ", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 6)),
         ("[1,2]\n", Error::Syntax(SyntaxError::UnexpectedWhitespace, 2, 0)),
         ("[1,2]\t", Error::Syntax(SyntaxError::UnexpectedWhitespace, 1, 6)),
@@ -782,7 +782,7 @@ fn test_parse_trailing_whitespace() {
 }
 
 #[test]
-fn test_missing_option_field() {
+fn missing_option_field() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Foo {
         x: Option<u32>,
@@ -804,19 +804,19 @@ fn test_missing_option_field() {
 }
 
 #[test]
-fn test_missing_nonoption_field() {
+fn missing_nonoption_field() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Foo {
         x: u32,
     }
 
-    test_parse_err::<Foo>(vec![
+    assert_parse_err::<Foo>(vec![
         ("{}", Error::Syntax(SyntaxError::MissingField("x"), 1, 2)),
     ]);
 }
 
 #[test]
-fn test_missing_renamed_field() {
+fn missing_renamed_field() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Foo {
         #[serde(rename="y")]
@@ -839,7 +839,7 @@ fn test_missing_renamed_field() {
 }
 
 #[test]
-fn test_find_path() {
+fn find_path() {
     let obj: Value = super::from_str(r#"{"x":{"a":1},"y":2}"#).unwrap();
 
     assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::U64(1));
@@ -848,7 +848,7 @@ fn test_find_path() {
 }
 
 #[test]
-fn test_serialize_seq_with_no_len() {
+fn serialize_seq_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
     struct MyVec<T>(Vec<T>);
 
@@ -914,7 +914,7 @@ fn test_serialize_seq_with_no_len() {
     vec.push(MyVec(Vec::new()));
     let vec: MyVec<MyVec<u32>> = MyVec(vec);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (
             vec.clone(),
             "[[],[]]",
@@ -923,7 +923,7 @@ fn test_serialize_seq_with_no_len() {
 }
 
 #[test]
-fn test_serialize_map_with_no_len() {
+fn serialize_map_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
     struct MyMap<K, V>(BTreeMap<K, V>);
 
@@ -993,7 +993,7 @@ fn test_serialize_map_with_no_len() {
     map.insert("b", MyMap(BTreeMap::new()));
     let map: MyMap<_, MyMap<u32, u32>> = MyMap(map);
 
-    test_encode_ok(&[
+    assert_encode_ok(&[
         (
             map.clone(),
             "{\"a\":{},\"b\":{}}",
@@ -1002,7 +1002,7 @@ fn test_serialize_map_with_no_len() {
 }
 
 #[test]
-fn test_deserialize_from_stream() {
+fn deserialize_from_stream() {
     use std::net;
     use std::io::Read;
     use std::thread;
@@ -1039,7 +1039,7 @@ fn test_deserialize_from_stream() {
 }
 
 #[test]
-fn test_serialize_rejects_non_key_maps() {
+fn serialize_rejects_non_key_maps() {
     let map = treemap!(
         1 => 2,
         3 => 4
@@ -1052,7 +1052,7 @@ fn test_serialize_rejects_non_key_maps() {
 }
 
 #[test]
-fn test_bytes_ser() {
+fn bytes_ser() {
     let buf = vec![];
     let bytes = Bytes::from(&buf);
     assert_eq!(super::to_string(&bytes).unwrap(), "[]".to_string());
@@ -1063,7 +1063,7 @@ fn test_bytes_ser() {
 }
 
 #[test]
-fn test_byte_buf_ser() {
+fn byte_buf_ser() {
     let bytes = ByteBuf::new();
     assert_eq!(super::to_string(&bytes).unwrap(), "[]".to_string());
 
@@ -1072,7 +1072,7 @@ fn test_byte_buf_ser() {
 }
 
 #[test]
-fn test_byte_buf_de() {
+fn byte_buf_de() {
     let bytes = ByteBuf::new();
     let v: ByteBuf = super::from_str("[]").unwrap();
     assert_eq!(v, bytes);
@@ -1083,7 +1083,7 @@ fn test_byte_buf_de() {
 }
 
 #[test]
-fn test_json_stream() {
+fn json_stream() {
     let stream = "{\"x\":39}{\"x\":40}{\"x\":41}{\"x\":42}".to_string();
     let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
         stream.as_bytes().iter().map(|byte| Ok(*byte))
@@ -1101,7 +1101,7 @@ fn test_json_stream() {
 }
 
 #[test]
-fn test_json_stream_truncated() {
+fn json_stream_truncated() {
     let stream = "{\"x\":40}{\"x\":".to_string();
     let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
         stream.as_bytes().iter().map(|byte| Ok(*byte))
@@ -1114,7 +1114,7 @@ fn test_json_stream_truncated() {
 }
 
 #[test]
-fn test_json_stream_empty() {
+fn json_stream_empty() {
     let stream = "".to_string();
     let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
         stream.as_bytes().iter().map(|byte| Ok(*byte))
@@ -1124,7 +1124,7 @@ fn test_json_stream_empty() {
 }
 
 #[test]
-fn test_try_from_json() {
+fn try_from_json() {
     let json_obj = serde_json::Value::Object(treemap!(
         "b".to_string() => serde_json::Value::Array(vec![
             serde_json::Value::Object(treemap!("c".to_string() => serde_json::Value::String("\x0c\x1f\r".to_string()))),
@@ -1154,7 +1154,7 @@ fn test_try_from_json() {
 }
 
 #[test]
-fn test_from_canonical_json() {
+fn from_canonical_json() {
     let canonical_json_obj = Value::Object(treemap!(
         "b".to_string() => Value::Array(vec![
             Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
