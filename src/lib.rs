@@ -230,4 +230,4 @@ mod read;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod benches;
+mod benchmarks;
