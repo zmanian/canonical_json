@@ -3,7 +3,7 @@ name = "canonical_json"
 version = "0.8.3"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 license = "MIT/Apache-2.0"
-description = "A JSON serialization file format"
+description = "Canonical JSON serialization format"
 readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
