@@ -1,6 +1,6 @@
 [package]
 name = "canonical_json"
-version = "0.8.4"
+version = "0.8.5-dev"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "Canonical JSON serialization format"
