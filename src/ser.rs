@@ -1,6 +1,4 @@
 //! Serialize JSON values into bytes.
-//!
-//! This module provides for JSON serialization with the type `Serializer`.
 
 use std::io;
 use std::num::FpCategory;
@@ -11,7 +9,7 @@ use super::error::{Error, SyntaxError};
 use itoa;
 use dtoa;
 
-/// A structure for serializing Rust values into JSON.
+/// Structure that serializes a Rust value into JSON.
 pub struct Serializer<W>(pub W);
 
 #[doc(hidden)]
@@ -793,7 +791,7 @@ fn fmt_f64_or_null<W>(wr: &mut W, value: f64) -> Result<(), Error>
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` writer.
+/// Encodes a JSON value and writes it into a `std::io::Write`.
 #[inline]
 pub fn to_writer<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<(), Error>
     where W: io::Write,
@@ -804,7 +802,7 @@ pub fn to_writer<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<(), Error>
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` buffer.
+/// Encodes a JSON value into a `Vec<u8>`.
 #[inline]
 pub fn to_vec<T>(value: &T) -> Result<Vec<u8>, Error>
     where T: ser::Serialize,
@@ -816,7 +814,7 @@ pub fn to_vec<T>(value: &T) -> Result<Vec<u8>, Error>
     Ok(writer)
 }
 
-/// Encode the specified struct into a json `String` buffer.
+/// Encodes a JSON value into a `String`.
 #[inline]
 pub fn to_string<T>(value: &T) -> Result<String, Error>
     where T: ser::Serialize,

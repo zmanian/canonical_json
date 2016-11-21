@@ -22,6 +22,11 @@
 //! - String contents are not guaranteed be parsable as UTF-8. Be aware that
 //!   encoded data may contain embedded control characters and nulls.
 //!
+//! *Note:* This library deviates from the spec by additionally requiring that
+//! strings are, in fact, valid UTF-8. This is a convenience tradeoff so that
+//! users get to handle strings directly rather than converting back-and-forth
+//! between raw bytes.
+//!
 //! ## Example
 //!
 //! This JSON value:
@@ -45,7 +50,7 @@
 //! {"abc":9000,"foo":"bar","snowman":"☃","zoo":["zorilla","anteater"]}
 //! ```
 //!
-//! # Type-based Serialization and Deserialization
+//! # Type-based serialization and deserialization
 //!
 //! Structs and enums can be serialized and deserialized to/from Canonical JSON
 //! without writing boilerplate code. To do this, it must implement the
@@ -85,7 +90,7 @@
 //!
 //! # Examples of use
 //!
-//! ## Serializing and Deserializing a struct
+//! ## Serializing and deserializing a struct
 //!
 //! ```ignore
 //! #![feature(proc_macro)]

@@ -1,6 +1,4 @@
 //! Deserialize bytes into JSON values.
-//!
-//! This module provides for JSON deserialization with the type `Deserializer`.
 
 use std::u64;
 use std::io;
@@ -14,22 +12,21 @@ use read::{self, Read};
 
 //////////////////////////////////////////////////////////////////////////////
 
-/// A structure that deserializes JSON into Rust values.
+/// Structure that deserializes JSON into a Rust value.
 pub struct Deserializer<Iter>(DeserializerImpl<read::IteratorRead<Iter>>)
     where Iter: Iterator<Item = io::Result<u8>>;
 
 impl<Iter> Deserializer<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
 {
-    /// Creates the JSON parser from an `std::iter::Iterator`.
+    /// Creates a JSON parser which will read bytes from `rdr`.
     #[inline]
     pub fn new(rdr: Iter) -> Self {
         Deserializer(DeserializerImpl::new(read::IteratorRead::new(rdr)))
     }
 
-    /// The `Deserializer::end` method should be called after a value has been fully deserialized.
-    /// This allows the `Deserializer` to validate that the input stream is at the end or that it
-    /// only has trailing whitespace.
+    /// This method should be called after a value has been fully deserialized
+    /// to validate that the input stream is at the end.
     #[inline]
     pub fn end(&mut self) -> Result<(), Error> {
         self.0.end()
@@ -738,7 +735,7 @@ impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
 
 //////////////////////////////////////////////////////////////////////////////
 
-/// Iterator that deserializes a stream into multiple JSON values.
+/// Iterator that deserializes a stream of JSON into multiple Rust values.
 pub struct StreamDeserializer<T, Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
           T: de::Deserialize,
@@ -799,7 +796,7 @@ fn from_trait<R, T>(read: R) -> Result<T, Error>
     Ok(value)
 }
 
-/// Decodes a json value from an iterator over an iterator
+/// Decodes a JSON value from an iterator of type
 /// `Iterator<Item=io::Result<u8>>`.
 pub fn from_iter<I, T>(iter: I) -> Result<T, Error>
     where I: Iterator<Item = io::Result<u8>>,
@@ -808,7 +805,7 @@ pub fn from_iter<I, T>(iter: I) -> Result<T, Error>
     from_trait(read::IteratorRead::new(iter))
 }
 
-/// Decodes a json value from a `std::io::Read`.
+/// Decodes a JSON value from a `std::io::Read`.
 pub fn from_reader<R, T>(rdr: R) -> Result<T, Error>
     where R: io::Read,
           T: de::Deserialize,
@@ -816,14 +813,14 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T, Error>
     from_iter(rdr.bytes())
 }
 
-/// Decodes a json value from a byte slice `&[u8]`.
+/// Decodes a JSON value from a byte slice `&[u8]`.
 pub fn from_slice<T>(v: &[u8]) -> Result<T, Error>
     where T: de::Deserialize,
 {
     from_trait(read::SliceRead::new(v))
 }
 
-/// Decodes a json value from a `&str`.
+/// Decodes a JSON value from a `&str`.
 pub fn from_str<T>(s: &str) -> Result<T, Error>
     where T: de::Deserialize,
 {
