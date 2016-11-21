@@ -183,7 +183,7 @@
 //!     let canonical_json_str: String = cjson::to_string(&canonical_value).unwrap();
 //!     let checksum = digest::digest(&digest::SHA256, canonical_json_str.as_bytes());
 //!     println!("{}", hex_from_bytes(checksum.as_ref()));
-//!     // 8b3199db606876d3ac0d9e678090c87e96ba4ba2c241e27e3e44e2bb102ce1
+//!     // 8b3199db6006876d3ac0d9e6078090c87e96ba4ba2c241e27e3e44e2bb102ce1
 //! }
 //!
 //! fn hex_from_bytes(bytes: &[u8]) -> String {
@@ -191,7 +191,7 @@
 //!
 //!     let mut hex = String::new();
 //!     for &byte in bytes {
-//!         write!(&mut hex, "{:x}", byte).unwrap();
+//!         write!(&mut hex, "{:02x}", byte).unwrap();
 //!     }
 //!     hex
 //! }
