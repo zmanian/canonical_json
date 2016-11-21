@@ -62,8 +62,8 @@ Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 canonical_json = { git = "https://github.com/vtduncan/canonical_json.git" }
-serde_derive = "0.8" # Optional, for deriving Serialize and Deserialise
-serde = "0.8"        # Optional, for deriving Serialize and Deserialise
+serde_derive = "0.8" # Optional, for deriving Serialize and Deserialize
+serde = "0.8"        # Optional, for deriving Serialize and Deserialize
 serde_json = "0.8"   # Optional, for converting to/from regular JSON
 
 ```
