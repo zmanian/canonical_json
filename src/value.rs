@@ -1143,7 +1143,7 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
 }
 
 impl TryFrom<serde_json::Value> for Value {
-    type Err = SyntaxError;
+    type Error = SyntaxError;
 
     fn try_from(value: serde_json::Value) -> Result<Value, SyntaxError> {
         match value {

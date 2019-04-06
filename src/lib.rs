@@ -198,7 +198,6 @@
 //! }
 //! ```
 
-#![feature(try_from)]
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(test, feature(proc_macro))]
 
