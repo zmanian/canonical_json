@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+#[cfg(feature = "unstable")]
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::i64;
@@ -1123,6 +1124,8 @@ fn json_stream_empty() {
     assert!(parsed.next().is_none());
 }
 
+
+#[cfg(feature = "unstable")]
 #[test]
 fn try_from_json() {
     let json_obj = serde_json::Value::Object(treemap!(

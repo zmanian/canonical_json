@@ -64,7 +64,6 @@
 //! [`Deserialize`]: ../serde/de/trait.Deserialize.html
 //!
 //! ```ignore
-//! #![feature(proc_macro)]
 //!
 //! #[macro_use]
 //! extern crate serde_derive;
@@ -198,9 +197,6 @@
 //! }
 //! ```
 
-#![cfg_attr(test, feature(test))]
-#![cfg_attr(test, feature(proc_macro))]
-
 extern crate num_traits;
 extern crate core;
 #[macro_use]
@@ -211,8 +207,6 @@ extern crate dtoa;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
-#[cfg(test)]
-extern crate test;
 
 pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
                    from_slice, from_str};
@@ -229,5 +223,3 @@ mod read;
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod benchmarks;

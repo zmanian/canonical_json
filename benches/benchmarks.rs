@@ -1,23 +1,30 @@
+#![feature(test)]
+extern crate test;
+extern crate canonical_json;
+
 use std::{i64, u64};
 use test::Bencher;
+use canonical_json::ser::to_string;
+use canonical_json::de::from_str;
+
 
 #[bench]
 fn deserialize_i64(b: &mut Bencher) {
-    let s = super::to_string(&i64::MIN).unwrap();
+    let s = to_string(&i64::MIN).unwrap();
     b.bytes = s.len() as u64;
 
     b.iter(|| {
-        let _s: i64 = super::from_str(&s).unwrap();
+        let _s: i64 = from_str(&s).unwrap();
     });
 }
 
 #[bench]
 fn deserialize_u64(b: &mut Bencher) {
-    let s = super::to_string(&u64::MAX).unwrap();
+    let s = to_string(&u64::MAX).unwrap();
     b.bytes = s.len() as u64;
 
     b.iter(|| {
-        let _s: u64 = super::from_str(&s).unwrap();
+        let _s: u64 = from_str(&s).unwrap();
     });
 }
 
@@ -42,7 +49,7 @@ fn deserialize_string(b: &mut Bencher) {
     b.bytes = s.len() as u64;
 
     b.iter(|| {
-        let _s: String = super::from_str(&s).unwrap();
+        let _s: String = from_str(&s).unwrap();
     });
 }
 
@@ -52,6 +59,6 @@ fn deserialize_string_escapes(b: &mut Bencher) {
     b.bytes = s.len() as u64;
 
     b.iter(|| {
-        let _s: String = super::from_str(&s).unwrap();
+        let _s: String = from_str(&s).unwrap();
     });
 }

@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, btree_map};
 
+#[cfg(feature = "unstable")]
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
@@ -1142,6 +1143,7 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
     de::Deserialize::deserialize(&mut de)
 }
 
+#[cfg(feature = "unstable")]
 impl TryFrom<serde_json::Value> for Value {
     type Error = SyntaxError;
 
