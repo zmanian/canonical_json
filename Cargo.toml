@@ -8,6 +8,10 @@ documentation = "https://vtllf.org/rustdoc/canonical_json/canonical_json/"
 repository = "https://github.com/vtduncan/canonical_json"
 keywords = ["json", "serde", "serialization"]
 
+[features]
+default = []
+nightly = []
+
 [dependencies]
 serde = "0.8"
 serde_json = "0.8"
@@ -17,3 +21,4 @@ dtoa = "0.2"
 
 [dev-dependencies]
 serde_derive = "0.8"
+sha2 = "0.8.0"
