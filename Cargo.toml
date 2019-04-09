@@ -21,3 +21,4 @@ dtoa = "0.2"
 
 [dev-dependencies]
 serde_derive = "0.8"
+sha2 = "0.8.0"

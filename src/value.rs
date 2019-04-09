@@ -1155,14 +1155,36 @@ impl TryFrom<serde_json::Value> for Value {
             serde_json::Value::U64(u) => Ok(Value::U64(u)),
             serde_json::Value::F64(_) => Err(SyntaxError::InvalidNumber),
             serde_json::Value::String(s) => Ok(Value::String(s)),
-            serde_json::Value::Array(a) => Ok(Value::Array(try!(
+            serde_json::Value::Array(a) => Ok(Value::Array(
                 a.into_iter().map(TryFrom::try_from).collect()
-            ))),
-            serde_json::Value::Object(o) => Ok(Value::Object(try!(
+            )),
+            serde_json::Value::Object(o) => Ok(Value::Object(
                 o.into_iter().map(|(k, v)| {
-                    TryFrom::try_from(v).map(|v| (k, v))
+                    (k, From::from(v))
                 }).collect()
-            ))),
+            )),
+        }
+    }
+}
+
+
+impl From<serde_json::Value> for Value {
+    fn from(value: serde_json::Value) -> Value {
+        match value {
+            serde_json::Value::Null => Value::Null,
+            serde_json::Value::Bool(b) => Value::Bool(b),
+            serde_json::Value::I64(i) => Value::I64(i),
+            serde_json::Value::U64(u) => Value::U64(u),
+            serde_json::Value::F64(_) => panic!("invalid syntax"),
+            serde_json::Value::String(s) => Value::String(s),
+            serde_json::Value::Array(a) => Value::Array(
+                a.into_iter().map(From::from).collect()
+            ),
+            serde_json::Value::Object(o) => Value::Object(
+                o.into_iter().map(|(k, v)| {
+                    (k, From::from(v))
+                }).collect()
+            ),
         }
     }
 }

@@ -67,17 +67,21 @@
 //!
 //! #[macro_use]
 //! extern crate serde_derive;
+//! # fn main() {}
 //! ```
 //!
 //! then annotate your data structure like this:
 //!
 //! ```ignore
+//! # #[macro_use]
+//! # extern crate serde_derive;
 //! #[derive(Serialize, Deserialize)]
 //! struct Point {
 //!     x: i64,
 //!     y: i64,
 //! }
 //!
+//! # fn main() {}
 //! ```
 //!
 //! *Note:* Struct fields must be defined in lexiographical order when deriving
@@ -93,8 +97,6 @@
 //! ## Serializing and deserializing a struct
 //!
 //! ```ignore
-//! #![feature(proc_macro)]
-//!
 //! #[macro_use]
 //! extern crate serde_derive;
 //! extern crate canonical_json;
@@ -154,17 +156,14 @@
 //! ## Calculating a checksum of a regular JSON document
 //!
 //! ```ignore
-//! #![feature(try_from)]
-//!
 //! extern crate canonical_json;
 //! extern crate serde_json;
-//! extern crate ring;
-//!
-//! use std::convert::TryFrom;
+
+//! extern crate sha2;
 //!
 //! use canonical_json as cjson;
 //! use serde_json as json;
-//! use ring::digest;
+//! use sha2::{Sha256, Digest};
 //!
 //! fn main() {
 //!     // Whitespace and the order of keys can be changed here
@@ -179,9 +178,9 @@
 //!     "#;
 //!
 //!     let value: json::Value = json::from_str(json_str).unwrap();
-//!     let canonical_value: cjson::Value = cjson::Value::try_from(value).unwrap();
+//!     let canonical_value: cjson::Value = cjson::Value::from(value);
 //!     let canonical_json_str: String = cjson::to_string(&canonical_value).unwrap();
-//!     let checksum = digest::digest(&digest::SHA256, canonical_json_str.as_bytes());
+//!     let checksum = Sha256::digest(canonical_json_str.as_bytes());
 //!     println!("{}", hex_from_bytes(checksum.as_ref()));
 //!     // 8b3199db6006876d3ac0d9e6078090c87e96ba4ba2c241e27e3e44e2bb102ce1
 //! }
